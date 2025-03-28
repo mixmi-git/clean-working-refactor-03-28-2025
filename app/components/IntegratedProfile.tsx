@@ -7,8 +7,8 @@ import ProfileView from './profile/ProfileView';
 import { ProfileMode } from '@/types/ProfileMode';
 import { SpotlightItem, ShopItem, MediaItem } from '@/types';
 
-// Main component that will be exported with the provider wrapper
-export default function IntegratedProfile() {
+// The IntegratedProfile component should be wrapped with the provider
+export function IntegratedProfile() {
   return (
     <ProfileProvider>
       <IntegratedProfileContent />
