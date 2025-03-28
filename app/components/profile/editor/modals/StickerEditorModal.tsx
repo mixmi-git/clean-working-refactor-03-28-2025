@@ -81,7 +81,10 @@ export function StickerEditorModal({
   sticker,
   onSave,
 }: StickerEditorModalProps) {
+  console.log('🖼️ StickerEditorModal render:', { sticker, availableOptions: STICKER_OPTIONS.map(o => o.image) });
+
   const handleStickerChange = (newImage: string) => {
+    console.log('🖼️ Selected new sticker image:', newImage);
     onSave({ 
       image: newImage,
       visible: true // Always set visible to true when changing sticker

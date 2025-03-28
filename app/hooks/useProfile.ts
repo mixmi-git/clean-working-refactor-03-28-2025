@@ -35,6 +35,19 @@ export const DEFAULT_PROFILE: ProfileData = {
   hasEditedProfile: false
 };
 
+/**
+ * Helper to ensure sticker image paths are properly formatted
+ */
+const ensureValidStickerPath = (path?: string): string => {
+  if (!path) return '/images/stickers/daisy-blue.png';
+  
+  // If path is a full URL, return as is
+  if (path.startsWith('http')) return path;
+  
+  // Ensure local paths start with /
+  return path.startsWith('/') ? path : `/${path}`; 
+};
+
 export function useProfile() {
   // Use storage hook for persistence
   const { getFromStorage, saveToStorage } = useStorage();
@@ -58,9 +71,13 @@ export function useProfile() {
       const savedProfile = getFromStorage<ProfileData | null>(STORAGE_KEYS.PROFILE, null);
       
       if (savedProfile) {
-        // Ensure sticker is always visible for consistency
-        if (savedProfile.sticker) {
-          savedProfile.sticker.visible = true;
+        // Ensure sticker exists and has valid image path
+        if (!savedProfile.sticker) {
+          savedProfile.sticker = DEFAULT_PROFILE.sticker;
+        } else {
+          // Make sure sticker image path is valid
+          savedProfile.sticker.image = ensureValidStickerPath(savedProfile.sticker.image);
+          savedProfile.sticker.visible = true; // Always ensure visibility
         }
         
         setProfile(savedProfile);
@@ -83,6 +100,11 @@ export function useProfile() {
    * Update profile data and persist to storage
    */
   const updateProfile = useCallback((updatedProfile: ProfileData) => {
+    // Ensure sticker image is properly formatted
+    if (updatedProfile.sticker) {
+      updatedProfile.sticker.image = ensureValidStickerPath(updatedProfile.sticker.image);
+    }
+    
     saveToStorage(STORAGE_KEYS.PROFILE, updatedProfile);
     setProfile(updatedProfile);
   }, [saveToStorage]);
@@ -119,11 +141,18 @@ export function useProfile() {
    * Update sticker data
    */
   const updateStickerData = useCallback((stickerData: { visible: boolean; image: string }) => {
-    const updatedProfile = {
-      ...profile,
-      sticker: stickerData
+    // Ensure the sticker image path is valid
+    const fixedStickerData = {
+      ...stickerData,
+      image: ensureValidStickerPath(stickerData.image)
     };
     
+    const updatedProfile = {
+      ...profile,
+      sticker: fixedStickerData
+    };
+    
+    console.log('🖼️ Updating sticker data:', { original: stickerData, fixed: fixedStickerData });
     updateProfile(updatedProfile);
   }, [profile, updateProfile]);
   

@@ -775,7 +775,17 @@ const ProfileView: React.FC<ProfileViewProps> = ({
             sticker={profile.sticker || { image: '/images/stickers/daisy-blue.png', visible: true }}
             onSave={(updatedSticker) => {
               if (onUpdateStickerData) {
-                onUpdateStickerData({ ...updatedSticker, visible: true });
+                // Ensure image path is correct
+                const stickerImage = updatedSticker.image.startsWith('/') 
+                  ? updatedSticker.image 
+                  : `/images/stickers/${updatedSticker.image}`;
+                
+                console.log('🖼️ Saving sticker from editor:', { updatedSticker, fixedImage: stickerImage });
+                onUpdateStickerData({ 
+                  ...updatedSticker, 
+                  image: stickerImage,
+                  visible: true 
+                });
               }
               setIsStickerEditorOpen(false);
             }}
