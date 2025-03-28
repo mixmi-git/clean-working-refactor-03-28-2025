@@ -22,6 +22,8 @@ export interface ProfileData {
     image: string;
     visible: boolean;
   };
+  // Tracks whether the profile has been edited by the user
+  hasEditedProfile?: boolean;
 }
 
 export interface PersonalInfoEditorProps {
