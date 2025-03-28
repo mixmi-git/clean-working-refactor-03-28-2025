@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Plus, GripVertical, Trash2 } from 'lucide-react';
-import { MediaItem, MediaType } from '@/types/media';
+import { MediaItem } from '@/types';
 import { MediaEmbed } from '@/components/media/MediaEmbed';
 import { detectMediaType, transformMediaUrl } from '@/lib/mediaUtils';
 
@@ -34,7 +34,7 @@ export function MediaEditorModal({
   // Add a new empty media item
   const addMediaItem = () => {
     if (mediaItems.length >= 3) return;
-    setMediaItems([...mediaItems, { id: '', type: 'youtube' as MediaType, rawUrl: '' }]);
+    setMediaItems([...mediaItems, { id: '', type: 'youtube', rawUrl: '' }]);
   };
 
   // Remove a media item
@@ -45,7 +45,7 @@ export function MediaEditorModal({
   // Handle URL change and auto-detect platform
   const handleUrlChange = (index: number, url: string) => {
     try {
-      const type = detectMediaType(url) as MediaType;
+      const type = detectMediaType(url);
       const embedUrl = transformMediaUrl(url, type);
       setError(null);
       // Success handling

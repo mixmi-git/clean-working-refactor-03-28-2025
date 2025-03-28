@@ -15,7 +15,7 @@ import { FaYoutube, FaSpotify, FaSoundcloud, FaLinkedinIn } from 'react-icons/fa
 import { FaXTwitter } from 'react-icons/fa6';
 import { SiTiktok } from 'react-icons/si';
 import { ProfileData } from '@/types';
-import { MediaItem } from '@/types/media';
+import { MediaItem } from '@/types';
 import { SpotlightItem as SpotlightItemType, ShopItem as ShopItemType } from '@/types';
 import StickerDisplay from './StickerDisplay';
 import PersonalInfoSection from './PersonalInfoSection';
@@ -31,8 +31,12 @@ import { StickerEditorModal } from './editor/modals/StickerEditorModal';
 const MediaEmbed = ({ item }: { item: MediaItem }) => {
   if (!item.embedUrl) return null;
 
+  // Helper to check media type
+  const isType = (type: string, check: string) => 
+    typeof type === 'string' && type.toLowerCase().includes(check.toLowerCase());
+
   // Detect YouTube embed URL
-  if (item.type === 'youtube') {
+  if (isType(item.type, 'youtube')) {
     return (
       <div className="aspect-video w-full rounded-lg overflow-hidden">
         <iframe 
@@ -50,9 +54,9 @@ const MediaEmbed = ({ item }: { item: MediaItem }) => {
   }
 
   // Spotify embed
-  if (item.type.includes('spotify')) {
+  if (isType(item.type, 'spotify')) {
     return (
-      <div className={item.type === 'spotify-playlist' ? "h-[380px]" : "h-[152px]"}>
+      <div className={isType(item.type, 'playlist') ? "h-[380px]" : "h-[152px]"}>
         <iframe 
           src={item.embedUrl}
           width="100%" 
@@ -66,9 +70,9 @@ const MediaEmbed = ({ item }: { item: MediaItem }) => {
   }
 
   // SoundCloud embed
-  if (item.type.includes('soundcloud')) {
+  if (isType(item.type, 'soundcloud')) {
     return (
-      <div className={item.type === 'soundcloud-playlist' ? "h-[300px]" : "h-[166px]"}>
+      <div className={isType(item.type, 'playlist') ? "h-[300px]" : "h-[166px]"}>
         <iframe 
           width="100%" 
           height="100%" 
@@ -83,9 +87,9 @@ const MediaEmbed = ({ item }: { item: MediaItem }) => {
   }
 
   // Apple Music embed
-  if (item.type.includes('apple-music')) {
+  if (isType(item.type, 'apple-music')) {
     return (
-      <div className={item.type === 'apple-music-playlist' ? "h-[450px]" : "h-[175px]"}>
+      <div className={isType(item.type, 'playlist') ? "h-[450px]" : "h-[175px]"}>
         <iframe 
           allow="autoplay *; encrypted-media *; fullscreen *; clipboard-write" 
           frameBorder="0" 
@@ -100,7 +104,7 @@ const MediaEmbed = ({ item }: { item: MediaItem }) => {
   }
 
   // Mixcloud embed
-  if (item.type === 'mixcloud') {
+  if (isType(item.type, 'mixcloud')) {
     return (
       <div className="h-[180px]">
         <iframe 

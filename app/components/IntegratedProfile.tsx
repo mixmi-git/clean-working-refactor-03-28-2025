@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { ProfileData, SpotlightItem, ShopItem } from '@/types';
-import { MediaItem } from '@/types/media';
-import { exampleMediaItems, exampleSpotlightItems, exampleShopItems } from '@/lib/example-content';
+import { MediaItem } from '@/types';
+import { exampleSpotlightItems, exampleShopItems } from '@/lib/example-content';
 import ProfileView from './profile/ProfileView';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
@@ -12,6 +12,7 @@ import { SocialLinksEditor } from './profile/SocialLinksEditor';
 import { StickerSection } from './profile/StickerSection';
 import { ProfileMode } from '@/types/ProfileMode';
 import { useProfile } from '@/hooks/useProfile';
+import { useMedia } from '@/hooks/useMedia';
 
 // Default profile for development and testing
 const DEFAULT_PROFILE: ProfileData = {
@@ -36,30 +37,6 @@ const DEFAULT_PROFILE: ProfileData = {
   hasEditedProfile: false
 };
 
-// Helper function to safely get data from localStorage
-const getFromStorage = <T,>(key: string, fallback: T): T => {
-  if (typeof window === 'undefined') return fallback;
-  
-  try {
-    const item = localStorage.getItem(key);
-    return item ? JSON.parse(item) : fallback;
-  } catch (error) {
-    console.error(`Error retrieving ${key} from localStorage:`, error);
-    return fallback;
-  }
-};
-
-// Helper function to safely save data to localStorage
-const saveToStorage = <T,>(key: string, value: T): void => {
-  if (typeof window === 'undefined') return;
-  
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (error) {
-    console.error(`Error saving ${key} to localStorage:`, error);
-  }
-};
-
 export function IntegratedProfile() {
   // Use profile hook for profile state management
   const { 
@@ -71,8 +48,14 @@ export function IntegratedProfile() {
     updateStickerData: saveStickerData 
   } = useProfile();
   
+  // Use media hook for media items state management
+  const {
+    mediaItems,
+    isLoading: mediaLoading,
+    updateMediaItems: saveMediaItems
+  } = useMedia();
+  
   // Keep other state management for now
-  const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [spotlightItems, setSpotlightItems] = useState<SpotlightItem[]>([]);
   const [shopItems, setShopItems] = useState<ShopItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -80,6 +63,30 @@ export function IntegratedProfile() {
   const [userAddress, setUserAddress] = useState<string | null>(null);
   const [walletStatus, setWalletStatus] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
+  
+  // Helper function to safely get data from localStorage
+  const getFromStorage = <T,>(key: string, fallback: T): T => {
+    if (typeof window === 'undefined') return fallback;
+    
+    try {
+      const item = localStorage.getItem(key);
+      return item ? JSON.parse(item) : fallback;
+    } catch (error) {
+      console.error(`Error retrieving ${key} from localStorage:`, error);
+      return fallback;
+    }
+  };
+  
+  // Helper function to safely save data to localStorage
+  const saveToStorage = <T,>(key: string, value: T): void => {
+    if (typeof window === 'undefined') return;
+    
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+      console.error(`Error saving ${key} to localStorage:`, error);
+    }
+  };
   
   // Simple storage keys
   const STORAGE_KEYS = {
@@ -89,7 +96,7 @@ export function IntegratedProfile() {
     MEDIA: 'mixmi_media_items',
     STICKER: 'mixmi_sticker_data'
   };
-
+  
   // Set mounted state
   useEffect(() => {
     setIsMounted(true);
@@ -99,7 +106,7 @@ export function IntegratedProfile() {
   useEffect(() => {
     if (!isMounted) return;
 
-    // Check for wallet connection
+    // Check for wallet connection 
     const connected = localStorage.getItem('simple-wallet-connected') === 'true';
     const address = localStorage.getItem('simple-wallet-address');
     
@@ -110,19 +117,13 @@ export function IntegratedProfile() {
     }
   }, [isMounted]);
   
-  // Handle setting media items with type assertion
-  const setMediaItemsWithAssertion = (items: any) => {
-    setMediaItems(items as MediaItem[]);
-  };
-  
   // Quick initial setup to avoid blank screen
   useEffect(() => {
     if (!isMounted) return;
 
-    // Only handle non-profile data
+    // Only handle non-profile data (media is now handled by useMedia hook)
     const hasExistingSpotlight = localStorage.getItem(STORAGE_KEYS.SPOTLIGHT);
     const hasExistingShop = localStorage.getItem(STORAGE_KEYS.SHOP);
-    const hasExistingMedia = localStorage.getItem(STORAGE_KEYS.MEDIA);
     
     if (!hasExistingSpotlight) {
       setSpotlightItems(exampleSpotlightItems);
@@ -131,11 +132,6 @@ export function IntegratedProfile() {
     if (!hasExistingShop) {
       setShopItems(exampleShopItems);
       saveToStorage(STORAGE_KEYS.SHOP, exampleShopItems);
-    }
-    if (!hasExistingMedia) {
-      // Use type assertion
-      setMediaItemsWithAssertion(exampleMediaItems);
-      saveToStorage(STORAGE_KEYS.MEDIA, exampleMediaItems);
     }
     
     // Force loading complete after a very short delay
@@ -150,10 +146,9 @@ export function IntegratedProfile() {
     console.log('🔄 IntegratedProfile: Loading data from localStorage...');
     
     try {
-      // Only load non-profile data
+      // Only load non-profile, non-media data
       const savedSpotlight = localStorage.getItem(STORAGE_KEYS.SPOTLIGHT);
       const savedShop = localStorage.getItem(STORAGE_KEYS.SHOP);
-      const savedMedia = localStorage.getItem(STORAGE_KEYS.MEDIA);
       
       if (savedSpotlight) {
         setSpotlightItems(JSON.parse(savedSpotlight));
@@ -164,20 +159,13 @@ export function IntegratedProfile() {
         setShopItems(JSON.parse(savedShop));
         console.log('📦 Loaded shop items from localStorage');
       }
-      
-      if (savedMedia) {
-        // Use type assertion
-        setMediaItemsWithAssertion(JSON.parse(savedMedia));
-        console.log('📦 Loaded media items from localStorage');
-      }
     } catch (error) {
       console.error('Error loading data from localStorage:', error);
       console.log('⚠️ Using example data as fallback');
       
-      // Set example data as fallback (except profile which is handled by useProfile)
+      // Set example data as fallback (except profile and media which are handled by hooks)
       setSpotlightItems(exampleSpotlightItems);
       setShopItems(exampleShopItems);
-      setMediaItemsWithAssertion(exampleMediaItems);
     }
     
     // Ensure loading is complete
@@ -188,12 +176,6 @@ export function IntegratedProfile() {
   const saveSpotlightItems = (items: SpotlightItem[]) => {
     saveToStorage(STORAGE_KEYS.SPOTLIGHT, items);
     setSpotlightItems(items);
-  };
-  
-  // Save media items to localStorage
-  const saveMediaItems = (items: MediaItem[]) => {
-    saveToStorage(STORAGE_KEYS.MEDIA, items);
-    setMediaItems(items);
   };
   
   // Save shop items to localStorage
@@ -255,7 +237,7 @@ export function IntegratedProfile() {
   };
   
   // Loading state handling
-  if (isLoading || profileLoading) {
+  if (isLoading || profileLoading || mediaLoading) {
     return (
       <div className="container mx-auto p-4 text-center">
         <div className="animate-pulse">
