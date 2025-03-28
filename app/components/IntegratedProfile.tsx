@@ -1,18 +1,15 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { ProfileData, SpotlightItem, ShopItem } from '@/types';
+import { ProfileData } from '@/types';
 import { MediaItem } from '@/types';
-import { exampleSpotlightItems, exampleShopItems } from '@/lib/example-content';
 import ProfileView from './profile/ProfileView';
 import Link from 'next/link';
-import { useAuth } from '@/lib/auth';
-import PersonalInfoSection from './profile/PersonalInfoSection';
-import { SocialLinksEditor } from './profile/SocialLinksEditor';
-import { StickerSection } from './profile/StickerSection';
 import { ProfileMode } from '@/types/ProfileMode';
 import { useProfile } from '@/hooks/useProfile';
 import { useMedia } from '@/hooks/useMedia';
+import { useSpotlight } from '@/hooks/useSpotlight';
+import { useShop } from '@/hooks/useShop';
 
 // Default profile for development and testing
 const DEFAULT_PROFILE: ProfileData = {
@@ -38,7 +35,7 @@ const DEFAULT_PROFILE: ProfileData = {
 };
 
 export function IntegratedProfile() {
-  // Use profile hook for profile state management
+  // Use hooks for state management
   const { 
     profile, 
     isLoading: profileLoading, 
@@ -55,9 +52,21 @@ export function IntegratedProfile() {
     updateMediaItems: saveMediaItems
   } = useMedia();
   
-  // Keep other state management for now
-  const [spotlightItems, setSpotlightItems] = useState<SpotlightItem[]>([]);
-  const [shopItems, setShopItems] = useState<ShopItem[]>([]);
+  // Use spotlight hook for spotlight items state management
+  const {
+    spotlightItems,
+    isLoading: spotlightLoading,
+    updateSpotlightItems: saveSpotlightItems
+  } = useSpotlight();
+  
+  // Use shop hook for shop items state management
+  const {
+    shopItems,
+    isLoading: shopLoading,
+    updateShopItems: saveShopItems
+  } = useShop();
+  
+  // UI state
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userAddress, setUserAddress] = useState<string | null>(null);
@@ -117,72 +126,14 @@ export function IntegratedProfile() {
     }
   }, [isMounted]);
   
-  // Quick initial setup to avoid blank screen
+  // Force loading complete after all hooks have loaded their data
   useEffect(() => {
-    if (!isMounted) return;
-
-    // Only handle non-profile data (media is now handled by useMedia hook)
-    const hasExistingSpotlight = localStorage.getItem(STORAGE_KEYS.SPOTLIGHT);
-    const hasExistingShop = localStorage.getItem(STORAGE_KEYS.SHOP);
-    
-    if (!hasExistingSpotlight) {
-      setSpotlightItems(exampleSpotlightItems);
-      saveToStorage(STORAGE_KEYS.SPOTLIGHT, exampleSpotlightItems);
+    if (isMounted && !profileLoading && !mediaLoading && !spotlightLoading && !shopLoading) {
+      // All hooks have finished loading, set loading to false
+      console.log('🔄 All data has been loaded from hooks');
+      setIsLoading(false);
     }
-    if (!hasExistingShop) {
-      setShopItems(exampleShopItems);
-      saveToStorage(STORAGE_KEYS.SHOP, exampleShopItems);
-    }
-    
-    // Force loading complete after a very short delay
-    const timer = setTimeout(() => setIsLoading(false), 100);
-    return () => clearTimeout(timer);
-  }, [isMounted]);
-  
-  // Main content loading - more comprehensive but may take longer
-  useEffect(() => {
-    if (!isMounted) return;
-
-    console.log('🔄 IntegratedProfile: Loading data from localStorage...');
-    
-    try {
-      // Only load non-profile, non-media data
-      const savedSpotlight = localStorage.getItem(STORAGE_KEYS.SPOTLIGHT);
-      const savedShop = localStorage.getItem(STORAGE_KEYS.SHOP);
-      
-      if (savedSpotlight) {
-        setSpotlightItems(JSON.parse(savedSpotlight));
-        console.log('📦 Loaded spotlight items from localStorage');
-      }
-      
-      if (savedShop) {
-        setShopItems(JSON.parse(savedShop));
-        console.log('📦 Loaded shop items from localStorage');
-      }
-    } catch (error) {
-      console.error('Error loading data from localStorage:', error);
-      console.log('⚠️ Using example data as fallback');
-      
-      // Set example data as fallback (except profile and media which are handled by hooks)
-      setSpotlightItems(exampleSpotlightItems);
-      setShopItems(exampleShopItems);
-    }
-    
-    // Ensure loading is complete
-    setIsLoading(false);
-  }, [isMounted]);
-  
-  // Save spotlight items to localStorage
-  const saveSpotlightItems = (items: SpotlightItem[]) => {
-    saveToStorage(STORAGE_KEYS.SPOTLIGHT, items);
-    setSpotlightItems(items);
-  };
-  
-  // Save shop items to localStorage
-  const saveShopItems = (items: ShopItem[]) => {
-    saveToStorage(STORAGE_KEYS.SHOP, items);
-    setShopItems(items);
-  };
+  }, [isMounted, profileLoading, mediaLoading, spotlightLoading, shopLoading]);
   
   // Update connectWallet function to use the new updateProfile
   const connectWallet = async () => {
@@ -237,7 +188,7 @@ export function IntegratedProfile() {
   };
   
   // Loading state handling
-  if (isLoading || profileLoading || mediaLoading) {
+  if (isLoading || profileLoading || mediaLoading || spotlightLoading || shopLoading) {
     return (
       <div className="container mx-auto p-4 text-center">
         <div className="animate-pulse">
