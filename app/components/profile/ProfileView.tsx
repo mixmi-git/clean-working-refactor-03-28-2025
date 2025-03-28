@@ -740,19 +740,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({
           
           {/* Sticker display */}
           <div className="relative group">
-            {/* Temporary debug button */}
-            {process.env.NODE_ENV === 'development' && (
-              <button
-                onClick={() => {
-                  localStorage.removeItem('mixmi_sticker_data');
-                  localStorage.removeItem('mixmi_sticker_data_default');
-                  window.location.reload();
-                }}
-                className="absolute top-0 left-0 px-2 py-1 text-xs bg-red-600 text-white rounded"
-              >
-                Clear Sticker Data
-              </button>
-            )}
             <StickerDisplay 
               sticker={profile.sticker} 
               sectionVisibility={profile.sectionVisibility}
@@ -794,20 +781,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({
               setIsStickerEditorOpen(false);
             }}
           />
-
-          {effectiveAuth && onEditProfile && (
-            <div className="mt-4">
-              <button
-                onClick={handleEditClick}
-                className="px-4 py-2 bg-transparent border border-cyan-500 text-cyan-300 rounded-md hover:bg-cyan-900 transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <Edit2 className="w-4 h-4" />
-                  <span>Edit Profile (View)</span>
-                </div>
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>
