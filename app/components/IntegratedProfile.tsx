@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { ProfileData, SpotlightItem, MediaItem, ShopItem } from '@/types';
+import { ProfileData, SpotlightItem, ShopItem } from '@/types';
+import { MediaItem, MediaType } from '@/types/media';
 import { exampleMediaItems, exampleSpotlightItems, exampleShopItems } from '@/lib/example-content';
 import ProfileView from './profile/ProfileView';
 import Link from 'next/link';
@@ -10,6 +11,7 @@ import PersonalInfoSection from './profile/PersonalInfoSection';
 import { SocialLinksEditor } from './profile/SocialLinksEditor';
 import { StickerSection } from './profile/StickerSection';
 import { ProfileMode } from '@/types/ProfileMode';
+import { useStorage } from '@/hooks/useStorage';
 
 // Default profile for development and testing
 const DEFAULT_PROFILE: ProfileData = {
@@ -34,31 +36,10 @@ const DEFAULT_PROFILE: ProfileData = {
   hasEditedProfile: false
 };
 
-// Helper function to safely get data from localStorage
-const getFromStorage = <T,>(key: string, fallback: T): T => {
-  if (typeof window === 'undefined') return fallback;
-  
-  try {
-    const item = localStorage.getItem(key);
-    return item ? JSON.parse(item) : fallback;
-  } catch (error) {
-    console.error(`Error retrieving ${key} from localStorage:`, error);
-    return fallback;
-  }
-};
-
-// Helper function to safely save data to localStorage
-const saveToStorage = <T,>(key: string, value: T): void => {
-  if (typeof window === 'undefined') return;
-  
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (error) {
-    console.error(`Error saving ${key} to localStorage:`, error);
-  }
-};
-
 export function IntegratedProfile() {
+  // Initialize storage hook
+  const storage = useStorage();
+  
   // State for profile data
   const [profile, setProfile] = useState<ProfileData>(DEFAULT_PROFILE);
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
@@ -70,15 +51,6 @@ export function IntegratedProfile() {
   const [walletStatus, setWalletStatus] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
   
-  // Simple storage keys
-  const STORAGE_KEYS = {
-    PROFILE: 'mixmi_profile_data',
-    SPOTLIGHT: 'mixmi_spotlight_items',
-    SHOP: 'mixmi_shop_items',
-    MEDIA: 'mixmi_media_items',
-    STICKER: 'mixmi_sticker_data'
-  };
-
   // Set mounted state
   useEffect(() => {
     setIsMounted(true);
@@ -88,16 +60,16 @@ export function IntegratedProfile() {
   useEffect(() => {
     if (!isMounted) return;
 
-    // Check for wallet connection
-    const connected = localStorage.getItem('simple-wallet-connected') === 'true';
-    const address = localStorage.getItem('simple-wallet-address');
+    // Check for wallet connection using boolean comparison
+    const connected = storage.getItem<boolean>(storage.KEYS.WALLET_CONNECTED, false);
+    const address = storage.getItem<string | null>(storage.KEYS.WALLET_ADDRESS, null);
     
     if (connected && address) {
       setIsAuthenticated(true);
       setUserAddress(address);
       console.log('✅ Restored wallet connection from localStorage:', address);
     }
-  }, [isMounted]);
+  }, [isMounted, storage]);
   
   // Quick initial setup to avoid blank screen
   useEffect(() => {
@@ -105,34 +77,34 @@ export function IntegratedProfile() {
 
     // Remove the localStorage clearing - it's causing issues
     // Instead, only set example data if no data exists
-    const hasExistingProfile = localStorage.getItem(STORAGE_KEYS.PROFILE);
-    const hasExistingSpotlight = localStorage.getItem(STORAGE_KEYS.SPOTLIGHT);
-    const hasExistingShop = localStorage.getItem(STORAGE_KEYS.SHOP);
-    const hasExistingMedia = localStorage.getItem(STORAGE_KEYS.MEDIA);
-    const hasExistingSticker = localStorage.getItem(STORAGE_KEYS.STICKER);
+    const hasExistingProfile = storage.getItem<ProfileData | null>(storage.KEYS.PROFILE, null);
+    const hasExistingSpotlight = storage.getItem<SpotlightItem[] | null>(storage.KEYS.SPOTLIGHT, null);
+    const hasExistingShop = storage.getItem<ShopItem[] | null>(storage.KEYS.SHOP, null);
+    const hasExistingMedia = storage.getItem<MediaItem[] | null>(storage.KEYS.MEDIA, null);
+    const hasExistingSticker = storage.getItem<{ visible: boolean; image: string } | null>(storage.KEYS.STICKER, null);
 
     if (!hasExistingProfile) {
       setProfile(DEFAULT_PROFILE);
-      localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(DEFAULT_PROFILE));
+      storage.setItem(storage.KEYS.PROFILE, DEFAULT_PROFILE);
     }
     if (!hasExistingSpotlight) {
       setSpotlightItems(exampleSpotlightItems);
-      localStorage.setItem(STORAGE_KEYS.SPOTLIGHT, JSON.stringify(exampleSpotlightItems));
+      storage.setItem(storage.KEYS.SPOTLIGHT, exampleSpotlightItems);
     }
     if (!hasExistingShop) {
       setShopItems(exampleShopItems);
-      localStorage.setItem(STORAGE_KEYS.SHOP, JSON.stringify(exampleShopItems));
+      storage.setItem(storage.KEYS.SHOP, exampleShopItems);
     }
     if (!hasExistingMedia) {
-      setMediaItems(exampleMediaItems);
-      localStorage.setItem(STORAGE_KEYS.MEDIA, JSON.stringify(exampleMediaItems));
+      setMediaItems(exampleMediaItems as MediaItem[]);
+      storage.setItem(storage.KEYS.MEDIA, exampleMediaItems);
     }
     if (!hasExistingSticker) {
       const defaultSticker = {
         visible: true,
         image: '/images/stickers/daisy-blue.png'
       };
-      localStorage.setItem(STORAGE_KEYS.STICKER, JSON.stringify(defaultSticker));
+      storage.setItem(storage.KEYS.STICKER, defaultSticker);
       setProfile(prev => ({
         ...prev,
         sticker: defaultSticker
@@ -142,7 +114,7 @@ export function IntegratedProfile() {
     // Force loading complete after a very short delay
     const timer = setTimeout(() => setIsLoading(false), 100);
     return () => clearTimeout(timer);
-  }, [isMounted]);
+  }, [isMounted, storage]);
   
   // Main content loading - more comprehensive but may take longer
   useEffect(() => {
@@ -152,44 +124,42 @@ export function IntegratedProfile() {
     
     try {
       // Load saved data if it exists
-      const savedProfile = localStorage.getItem(STORAGE_KEYS.PROFILE);
-      const savedSpotlight = localStorage.getItem(STORAGE_KEYS.SPOTLIGHT);
-      const savedShop = localStorage.getItem(STORAGE_KEYS.SHOP);
-      const savedMedia = localStorage.getItem(STORAGE_KEYS.MEDIA);
-      const savedSticker = localStorage.getItem(STORAGE_KEYS.STICKER);
+      const savedProfile = storage.getItem<ProfileData | null>(storage.KEYS.PROFILE, null);
+      const savedSpotlight = storage.getItem<SpotlightItem[] | null>(storage.KEYS.SPOTLIGHT, null);
+      const savedShop = storage.getItem<ShopItem[] | null>(storage.KEYS.SHOP, null);
+      const savedMedia = storage.getItem<MediaItem[] | null>(storage.KEYS.MEDIA, null);
+      const savedSticker = storage.getItem<{visible: boolean; image: string} | null>(storage.KEYS.STICKER, null);
       
       if (savedProfile) {
-        const parsedProfile = JSON.parse(savedProfile);
         // Ensure sticker is always visible
-        if (parsedProfile.sticker) {
-          parsedProfile.sticker.visible = true;
+        if (savedProfile.sticker) {
+          savedProfile.sticker.visible = true;
         }
-        setProfile(parsedProfile);
+        setProfile(savedProfile);
         console.log('📦 Loaded profile from localStorage');
       }
       
       if (savedSpotlight) {
-        setSpotlightItems(JSON.parse(savedSpotlight));
+        setSpotlightItems(savedSpotlight);
         console.log('📦 Loaded spotlight items from localStorage');
       }
       
       if (savedShop) {
-        setShopItems(JSON.parse(savedShop));
+        setShopItems(savedShop);
         console.log('📦 Loaded shop items from localStorage');
       }
       
       if (savedMedia) {
-        setMediaItems(JSON.parse(savedMedia));
+        setMediaItems(savedMedia as MediaItem[]);
         console.log('📦 Loaded media items from localStorage');
       }
 
       if (savedSticker) {
-        const parsedSticker = JSON.parse(savedSticker);
         // Always ensure sticker is visible
-        parsedSticker.visible = true;
+        savedSticker.visible = true;
         setProfile(prev => ({
           ...prev,
-          sticker: parsedSticker
+          sticker: savedSticker
         }));
         console.log('📦 Loaded sticker data from localStorage');
       }
@@ -197,38 +167,38 @@ export function IntegratedProfile() {
       console.error('Error loading data from localStorage:', error);
       console.log('⚠️ Using example data as fallback');
       
-      // Set example data as fallback
+      // Set example data as fallback with type assertion
       setProfile(DEFAULT_PROFILE);
       setSpotlightItems(exampleSpotlightItems);
       setShopItems(exampleShopItems);
-      setMediaItems(exampleMediaItems);
+      setMediaItems(exampleMediaItems as MediaItem[]);
     }
     
     // Ensure loading is complete
     setIsLoading(false);
-  }, [isMounted]);
+  }, [isMounted, storage]);
   
   // Save profile data to localStorage
   const saveProfileData = (updatedProfile: ProfileData) => {
-    saveToStorage(STORAGE_KEYS.PROFILE, updatedProfile);
+    storage.setItem(storage.KEYS.PROFILE, updatedProfile);
     setProfile(updatedProfile);
   };
   
   // Save spotlight items to localStorage
   const saveSpotlightItems = (items: SpotlightItem[]) => {
-    saveToStorage(STORAGE_KEYS.SPOTLIGHT, items);
+    storage.setItem(storage.KEYS.SPOTLIGHT, items);
     setSpotlightItems(items);
   };
   
   // Save media items to localStorage
   const saveMediaItems = (items: MediaItem[]) => {
-    saveToStorage(STORAGE_KEYS.MEDIA, items);
+    storage.setItem(storage.KEYS.MEDIA, items);
     setMediaItems(items);
   };
   
   // Save shop items to localStorage
   const saveShopItems = (items: ShopItem[]) => {
-    saveToStorage(STORAGE_KEYS.SHOP, items);
+    storage.setItem(storage.KEYS.SHOP, items);
     setShopItems(items);
   };
   
@@ -258,7 +228,7 @@ export function IntegratedProfile() {
   
   // Save sticker data to localStorage
   const saveStickerData = (stickerData: { visible: boolean; image: string }) => {
-    saveToStorage(STORAGE_KEYS.STICKER, stickerData);
+    storage.setItem(storage.KEYS.STICKER, stickerData);
     setProfile(prev => ({
       ...prev,
       sticker: stickerData
@@ -273,8 +243,8 @@ export function IntegratedProfile() {
       
       try {
         // Clear localStorage wallet connection state
-        localStorage.removeItem('simple-wallet-connected');
-        localStorage.removeItem('simple-wallet-address');
+        storage.removeItem(storage.KEYS.WALLET_CONNECTED);
+        storage.removeItem(storage.KEYS.WALLET_ADDRESS);
         
         // Update authentication state
         setIsAuthenticated(false);
@@ -331,8 +301,8 @@ export function IntegratedProfile() {
               setWalletStatus(`Connected! Address: ${address.slice(0, 6)}...${address.slice(-4)}`);
               
               // Store in localStorage
-              localStorage.setItem('simple-wallet-connected', 'true');
-              localStorage.setItem('simple-wallet-address', address);
+              storage.setItem(storage.KEYS.WALLET_CONNECTED, true);
+              storage.setItem(storage.KEYS.WALLET_ADDRESS, address);
               
               // Update the profile with the wallet address
               const updatedProfile = {
