@@ -1,16 +1,23 @@
 import React from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Loader2, RotateCcw } from 'lucide-react';
+import { Loader2, RotateCcw, Wallet } from 'lucide-react';
 
 interface NavbarProps {
   isAuthenticated: boolean;
   isLoading?: boolean;
   onLoginToggle: () => void;
   statusMessage?: string;
+  walletAddress?: string;
 }
 
-export function Navbar({ isAuthenticated, isLoading = false, onLoginToggle, statusMessage }: NavbarProps) {
+export function Navbar({ 
+  isAuthenticated, 
+  isLoading = false, 
+  onLoginToggle, 
+  statusMessage,
+  walletAddress
+}: NavbarProps) {
   // Dev mode check
   const isDev = process.env.NODE_ENV === 'development';
   
@@ -19,6 +26,12 @@ export function Navbar({ isAuthenticated, isLoading = false, onLoginToggle, stat
     if (typeof window !== 'undefined' && (window as any).toggleAuth) {
       (window as any).toggleAuth();
     }
+  };
+  
+  // Format wallet address for display
+  const formatAddress = (address: string) => {
+    if (!address) return '';
+    return `${address.slice(0, 5)}...${address.slice(-4)}`;
   };
   
   return (
@@ -32,16 +45,16 @@ export function Navbar({ isAuthenticated, isLoading = false, onLoginToggle, stat
               className="h-8 w-auto"
             />
           </a>
-        </div>
-        
-        <div className="flex items-center gap-3">
+          
           {/* Status message - shows when available */}
           {statusMessage && (
-            <div className="text-xs text-cyan-400 animate-pulse mr-2">
+            <div className="text-xs text-cyan-400 animate-pulse ml-4">
               {statusMessage}
             </div>
           )}
-          
+        </div>
+        
+        <div className="flex items-center gap-3">
           {/* Dev toggle button - only visible in development */}
           {isDev && (
             <Button
@@ -52,7 +65,15 @@ export function Navbar({ isAuthenticated, isLoading = false, onLoginToggle, stat
             </Button>
           )}
           
-          {/* Auth button - always visible */}
+          {/* Display wallet address when authenticated */}
+          {isAuthenticated && walletAddress && (
+            <div className="text-sm text-cyan-400 flex items-center">
+              <Wallet size={14} className="mr-2" />
+              {formatAddress(walletAddress)}
+            </div>
+          )}
+          
+          {/* Auth button - always visible and pinned to right */}
           <Button
             onClick={onLoginToggle}
             className="relative z-20 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white transition-all duration-200"
@@ -64,7 +85,7 @@ export function Navbar({ isAuthenticated, isLoading = false, onLoginToggle, stat
                 <span>{isAuthenticated ? 'Disconnecting...' : 'Connecting...'}</span>
               </span>
             ) : (
-              <span>{isAuthenticated ? '✓ Disconnect Wallet' : '🔑 Connect Wallet'}</span>
+              <span>{isAuthenticated ? 'Disconnect Wallet' : 'Connect Wallet'}</span>
             )}
           </Button>
         </div>

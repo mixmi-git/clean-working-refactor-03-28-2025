@@ -129,6 +129,7 @@ function IntegratedProfileContent() {
         isLoading={walletLoading}
         onLoginToggle={handleToggleWallet}
         statusMessage={statusMessage || (isLoading ? "Loading profile..." : undefined)}
+        walletAddress={userAddress || profile.walletAddress}
       />
       
       <main className="flex-grow">
