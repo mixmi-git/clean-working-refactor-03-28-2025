@@ -9,6 +9,12 @@ export interface ProfileData {
   walletAddress?: string;
   showWalletAddress?: boolean;
   socialLinks: SocialLink[];
+  sectionVisibility?: {
+    spotlight?: boolean;
+    media?: boolean;
+    shop?: boolean;
+    sticker?: boolean;
+  };
 }
 
 export interface PersonalInfoEditorProps {
