@@ -11,7 +11,7 @@ import PersonalInfoSection from './profile/PersonalInfoSection';
 import { SocialLinksEditor } from './profile/SocialLinksEditor';
 import { StickerSection } from './profile/StickerSection';
 import { ProfileMode } from '@/types/ProfileMode';
-import { useStorage } from '@/hooks/useStorage';
+import { useStorage, STORAGE_KEYS } from '@/hooks/useStorage';
 
 // Default profile for development and testing
 const DEFAULT_PROFILE: ProfileData = {
@@ -51,15 +51,6 @@ export function IntegratedProfile() {
   const [walletStatus, setWalletStatus] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
   
-  // Simple storage keys
-  const STORAGE_KEYS = {
-    PROFILE: 'mixmi_profile_data',
-    SPOTLIGHT: 'mixmi_spotlight_items',
-    SHOP: 'mixmi_shop_items',
-    MEDIA: 'mixmi_media_items',
-    STICKER: 'mixmi_sticker_data'
-  };
-
   // Set mounted state
   useEffect(() => {
     setIsMounted(true);
@@ -70,8 +61,8 @@ export function IntegratedProfile() {
     if (!isMounted) return;
 
     // Check for wallet connection
-    const connected = localStorage.getItem('simple-wallet-connected') === 'true';
-    const address = localStorage.getItem('simple-wallet-address');
+    const connected = localStorage.getItem(STORAGE_KEYS.WALLET_CONNECTED) === 'true';
+    const address = localStorage.getItem(STORAGE_KEYS.WALLET_ADDRESS);
     
     if (connected && address) {
       setIsAuthenticated(true);
@@ -259,8 +250,8 @@ export function IntegratedProfile() {
       
       try {
         // Clear localStorage wallet connection state
-        removeFromStorage('simple-wallet-connected');
-        removeFromStorage('simple-wallet-address');
+        removeFromStorage(STORAGE_KEYS.WALLET_CONNECTED);
+        removeFromStorage(STORAGE_KEYS.WALLET_ADDRESS);
         
         // Update authentication state
         setIsAuthenticated(false);
@@ -317,8 +308,8 @@ export function IntegratedProfile() {
               setWalletStatus(`Connected! Address: ${address.slice(0, 6)}...${address.slice(-4)}`);
               
               // Store in localStorage
-              localStorage.setItem('simple-wallet-connected', 'true');
-              localStorage.setItem('simple-wallet-address', address);
+              localStorage.setItem(STORAGE_KEYS.WALLET_CONNECTED, 'true');
+              localStorage.setItem(STORAGE_KEYS.WALLET_ADDRESS, address);
               
               // Update the profile with the wallet address
               const updatedProfile = {

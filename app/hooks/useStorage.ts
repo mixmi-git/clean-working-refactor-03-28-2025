@@ -6,7 +6,8 @@
 import { useCallback } from 'react';
 
 /**
- * Storage keys used in the application
+ * Centralized storage keys used in the application
+ * This helps prevent typos and makes it easier to change key names in the future
  */
 export const STORAGE_KEYS = {
   PROFILE: 'mixmi_profile_data',
@@ -75,6 +76,7 @@ export function useStorage() {
   return {
     getFromStorage,
     saveToStorage,
-    removeFromStorage
+    removeFromStorage,
+    STORAGE_KEYS
   };
 } 
