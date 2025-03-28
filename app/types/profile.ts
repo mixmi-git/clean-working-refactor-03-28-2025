@@ -1,5 +1,6 @@
 import { SocialLink } from '@/types';
 
+// Base interface with only the fields used by PersonalInfoEditor
 export interface ProfileData {
   id: string;
   name: string;
@@ -9,6 +10,13 @@ export interface ProfileData {
   walletAddress?: string;
   showWalletAddress?: boolean;
   socialLinks: SocialLink[];
+  // Section visibility type is defined in @/types/index.ts
+  sectionVisibility?: {
+    spotlight?: boolean;
+    media?: boolean;
+    shop?: boolean;
+    sticker?: boolean;
+  };
 }
 
 export interface PersonalInfoEditorProps {

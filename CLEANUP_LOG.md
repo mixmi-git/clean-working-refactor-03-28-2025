@@ -190,6 +190,21 @@ This document tracks all cleanup tasks performed on the codebase, including what
   - Started the application to verify it works correctly
   - Tested profile editing functionality to ensure social links still work
 
+### Task 16: Standardize ProfileData - sectionVisibility Field (Second Attempt)
+- **Branch:** `refactor/standardize-sectionvisibility-field-v2`
+- **Files Modified:**
+  - `app/types/profile.ts` (added `sectionVisibility` field to match the definition in `app/types/index.ts`)
+- **Rationale:**
+  - `sectionVisibility` field was missing in `app/types/profile.ts` but present in `app/types/index.ts`
+  - First attempt caused an infinite loading error, possibly due to circular dependencies
+  - Second attempt used a more careful approach by directly adding the field definition instead of importing it
+  - This field is essential for controlling which sections are displayed on the profile
+  - Adding it ensures type consistency between different ProfileData definitions
+- **Verification:**
+  - Ran TypeScript compiler to check for errors
+  - Started the application to verify it loads correctly
+  - Tested profile editing functionality to ensure section visibility still works
+
 ## Notes for Future Tasks
 
 - **Checkpoint Files:** Multiple attempts to remove checkpoint/backup files have confirmed they are critical to application functionality despite their names suggesting otherwise:
