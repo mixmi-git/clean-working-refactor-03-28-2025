@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ProfileProvider } from '../context/ProfileContext';
 import { useProfileContext } from '../context/ProfileContext';
 import ProfileView from './profile/ProfileView';
 import { ProfileMode } from '@/types/ProfileMode';
 import { SpotlightItem, ShopItem, MediaItem } from '@/types';
 import { Navbar } from './Navbar';
+import { useAuth } from '@/lib/auth';
 
 // The IntegratedProfile component should be wrapped with the provider
 export function IntegratedProfile() {
@@ -55,43 +56,46 @@ function IntegratedProfileContent() {
   const [walletLoading, setWalletLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | undefined>(undefined);
 
-  // Wallet simulation vars
-  const WALLET_ADDRESSES = [
-    '0x8a5e9F03A54c77B67f7D0b1B39B3f6F5a9F3a76C', // Test address 1
-    '0xDe9c0582fB4efC9BF95aE1C8AF87fE53B796d841', // Test address 2
-    '0x7F5a9F03A54c77B67f7D0b1B39B3f6F5a9F3a76C'  // Test address 3
-  ];
+  // Use the auth hook for Stacks wallet integration
+  const { 
+    isAuthenticated, 
+    userAddress, 
+    connectWallet, 
+    disconnectWallet,
+    isInitialized
+  } = useAuth();
 
-  // Connect wallet function with more realistic implementation
-  const connectWallet = async () => {
-    try {
-      setWalletLoading(true);
-      setStatusMessage("Connecting wallet...");
-      
-      // Simulate network delay for a more realistic wallet connection
-      await new Promise(resolve => setTimeout(resolve, 1200));
-      
-      if (!profile.walletAddress) {
-        // If not connected, pick a random address
-        const randomIndex = Math.floor(Math.random() * WALLET_ADDRESSES.length);
-        const address = WALLET_ADDRESSES[randomIndex];
-        
-        // Update profile with the wallet address
-        updateProfileField('walletAddress', address);
+  // When wallet is connected/disconnected, update the profile
+  useEffect(() => {
+    if (isInitialized) {
+      if (isAuthenticated && userAddress) {
+        // Update profile with wallet address from Stacks
+        updateProfileField('walletAddress', userAddress);
         updateProfileField('showWalletAddress', true);
-        setStatusMessage("Wallet connected successfully!");
         
-        // Enable edit mode since wallet is now connected
+        // Enable edit mode since wallet is connected
         localStorage.setItem('profile_mode', ProfileMode.Edit);
         updateProfileField('hasEditedProfile', true);
-        
-        console.log('✅ Connected to wallet:', address);
-      } else {
-        // If already connected, disconnect
+      } else if (!isAuthenticated && profile.walletAddress) {
+        // Clear wallet address when disconnected
         updateProfileField('walletAddress', '');
         updateProfileField('showWalletAddress', false);
+      }
+    }
+  }, [isAuthenticated, userAddress, isInitialized, updateProfileField, profile.walletAddress]);
+
+  // Handle wallet connection
+  const handleToggleWallet = async () => {
+    try {
+      setWalletLoading(true);
+      setStatusMessage(isAuthenticated ? "Disconnecting wallet..." : "Connecting wallet...");
+      
+      if (isAuthenticated) {
+        await disconnectWallet();
         setStatusMessage("Wallet disconnected");
-        console.log('❌ Disconnected wallet');
+      } else {
+        await connectWallet();
+        setStatusMessage("Wallet connected successfully!");
       }
       
       // Clear status message after a delay
@@ -101,8 +105,8 @@ function IntegratedProfileContent() {
       }, 2000);
       
     } catch (error) {
-      console.error('Error connecting wallet:', error);
-      setStatusMessage("Error connecting wallet");
+      console.error('Error with wallet connection:', error);
+      setStatusMessage("Error with wallet operation");
       setWalletLoading(false);
       
       // Clear error message after delay
@@ -118,15 +122,12 @@ function IntegratedProfileContent() {
     updateProfileField('hasEditedProfile', true);
   };
 
-  // Determine if wallet is connected
-  const isAuthenticated = !!profile.walletAddress;
-
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar 
         isAuthenticated={isAuthenticated}
         isLoading={walletLoading}
-        onLoginToggle={connectWallet}
+        onLoginToggle={handleToggleWallet}
         statusMessage={statusMessage || (isLoading ? "Loading profile..." : undefined)}
       />
       
