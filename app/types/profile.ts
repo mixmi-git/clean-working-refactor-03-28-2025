@@ -17,6 +17,11 @@ export interface ProfileData {
     shop?: boolean;
     sticker?: boolean;
   };
+  // Sticker configuration
+  sticker?: {
+    image: string;
+    visible: boolean;
+  };
 }
 
 export interface PersonalInfoEditorProps {
