@@ -1,3 +1,6 @@
+// DATA DETECTOR - DO NOT REMOVE
+console.log('DATA FILE LOADED: app/data/exampleMediaItems.ts');
+
 import { MediaItem } from '@/types/media';
 
 /**

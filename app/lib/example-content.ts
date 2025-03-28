@@ -1,3 +1,6 @@
+// DETECTOR - DO NOT REMOVE
+console.log('REGULAR FILE LOADED: app/lib/example-content.ts');
+
 import { MediaItem, SpotlightItem, ShopItem } from '../types';
 import { Project } from '../types/content';
 

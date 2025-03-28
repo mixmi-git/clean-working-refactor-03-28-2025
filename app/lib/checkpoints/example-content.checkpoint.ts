@@ -1,3 +1,6 @@
+// CHECKPOINT DETECTOR - DO NOT REMOVE
+console.log('CHECKPOINT FILE LOADED: app/lib/checkpoints/example-content.checkpoint.ts');
+
 import { Project, ShopItem } from '@/types/content'
 import { MediaItem } from '@/types/media'
 import { MediaItemType, SpotlightItemType, ShopItemType } from '../components/profile/UserProfileContainer'
