@@ -50,7 +50,7 @@ export interface ProfileData {
   name: string;
   title: string;
   bio: string;
-  image: string;
+  image?: string;
   socialLinks: SocialLink[];
   sectionVisibility?: {
     spotlight?: boolean;

@@ -4,7 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { PersonalInfoEditorProps, ProfileData, SocialLinkType } from '@/types/profile';
+import { PersonalInfoEditorProps, ProfileData } from '@/types/profile';
+import { SocialLink } from '@/types';
 import { Instagram, Trash2 } from 'lucide-react';
 import { FaYoutube, FaSpotify, FaSoundcloud, FaLinkedinIn } from 'react-icons/fa';
 import { FaXTwitter } from 'react-icons/fa6';
@@ -60,7 +61,7 @@ export const PersonalInfoEditor: React.FC<PersonalInfoEditorProps> = ({
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSocialLinkChange = (index: number, field: keyof SocialLinkType, value: string) => {
+  const handleSocialLinkChange = (index: number, field: keyof SocialLink, value: string) => {
     if (!isMounted.current) return;
     
     const newLinks = [...formData.socialLinks];

@@ -1,7 +1,4 @@
-export interface SocialLinkType {
-  platform: string;
-  url: string;
-}
+import { SocialLink } from '@/types';
 
 export interface ProfileData {
   id: string;
@@ -11,7 +8,7 @@ export interface ProfileData {
   image?: string;
   walletAddress?: string;
   showWalletAddress?: boolean;
-  socialLinks: SocialLinkType[];
+  socialLinks: SocialLink[];
 }
 
 export interface PersonalInfoEditorProps {
