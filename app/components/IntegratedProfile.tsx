@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { ProfileData, SpotlightItem, MediaItem, ShopItem } from '@/types';
+import { ProfileData, SpotlightItem, ShopItem } from '@/types';
+import { MediaItem } from '@/types/media';
 import { exampleMediaItems, exampleSpotlightItems, exampleShopItems } from '@/lib/example-content';
 import ProfileView from './profile/ProfileView';
 import Link from 'next/link';
@@ -10,6 +11,7 @@ import PersonalInfoSection from './profile/PersonalInfoSection';
 import { SocialLinksEditor } from './profile/SocialLinksEditor';
 import { StickerSection } from './profile/StickerSection';
 import { ProfileMode } from '@/types/ProfileMode';
+import { useStorage } from '@/hooks/useStorage';
 
 // Default profile for development and testing
 const DEFAULT_PROFILE: ProfileData = {
@@ -34,31 +36,10 @@ const DEFAULT_PROFILE: ProfileData = {
   hasEditedProfile: false
 };
 
-// Helper function to safely get data from localStorage
-const getFromStorage = <T,>(key: string, fallback: T): T => {
-  if (typeof window === 'undefined') return fallback;
-  
-  try {
-    const item = localStorage.getItem(key);
-    return item ? JSON.parse(item) : fallback;
-  } catch (error) {
-    console.error(`Error retrieving ${key} from localStorage:`, error);
-    return fallback;
-  }
-};
-
-// Helper function to safely save data to localStorage
-const saveToStorage = <T,>(key: string, value: T): void => {
-  if (typeof window === 'undefined') return;
-  
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (error) {
-    console.error(`Error saving ${key} to localStorage:`, error);
-  }
-};
-
 export function IntegratedProfile() {
+  // Use our storage hook
+  const { getFromStorage, saveToStorage, removeFromStorage } = useStorage();
+  
   // State for profile data
   const [profile, setProfile] = useState<ProfileData>(DEFAULT_PROFILE);
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
@@ -99,6 +80,11 @@ export function IntegratedProfile() {
     }
   }, [isMounted]);
   
+  // Handle setting media items with type assertion
+  const setMediaItemsWithAssertion = (items: any) => {
+    setMediaItems(items as MediaItem[]);
+  };
+  
   // Quick initial setup to avoid blank screen
   useEffect(() => {
     if (!isMounted) return;
@@ -113,26 +99,27 @@ export function IntegratedProfile() {
 
     if (!hasExistingProfile) {
       setProfile(DEFAULT_PROFILE);
-      localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(DEFAULT_PROFILE));
+      saveToStorage(STORAGE_KEYS.PROFILE, DEFAULT_PROFILE);
     }
     if (!hasExistingSpotlight) {
       setSpotlightItems(exampleSpotlightItems);
-      localStorage.setItem(STORAGE_KEYS.SPOTLIGHT, JSON.stringify(exampleSpotlightItems));
+      saveToStorage(STORAGE_KEYS.SPOTLIGHT, exampleSpotlightItems);
     }
     if (!hasExistingShop) {
       setShopItems(exampleShopItems);
-      localStorage.setItem(STORAGE_KEYS.SHOP, JSON.stringify(exampleShopItems));
+      saveToStorage(STORAGE_KEYS.SHOP, exampleShopItems);
     }
     if (!hasExistingMedia) {
-      setMediaItems(exampleMediaItems);
-      localStorage.setItem(STORAGE_KEYS.MEDIA, JSON.stringify(exampleMediaItems));
+      // Use type assertion
+      setMediaItemsWithAssertion(exampleMediaItems);
+      saveToStorage(STORAGE_KEYS.MEDIA, exampleMediaItems);
     }
     if (!hasExistingSticker) {
       const defaultSticker = {
         visible: true,
         image: '/images/stickers/daisy-blue.png'
       };
-      localStorage.setItem(STORAGE_KEYS.STICKER, JSON.stringify(defaultSticker));
+      saveToStorage(STORAGE_KEYS.STICKER, defaultSticker);
       setProfile(prev => ({
         ...prev,
         sticker: defaultSticker
@@ -142,7 +129,7 @@ export function IntegratedProfile() {
     // Force loading complete after a very short delay
     const timer = setTimeout(() => setIsLoading(false), 100);
     return () => clearTimeout(timer);
-  }, [isMounted]);
+  }, [isMounted, saveToStorage]);
   
   // Main content loading - more comprehensive but may take longer
   useEffect(() => {
@@ -152,44 +139,43 @@ export function IntegratedProfile() {
     
     try {
       // Load saved data if it exists
-      const savedProfile = localStorage.getItem(STORAGE_KEYS.PROFILE);
-      const savedSpotlight = localStorage.getItem(STORAGE_KEYS.SPOTLIGHT);
-      const savedShop = localStorage.getItem(STORAGE_KEYS.SHOP);
-      const savedMedia = localStorage.getItem(STORAGE_KEYS.MEDIA);
-      const savedSticker = localStorage.getItem(STORAGE_KEYS.STICKER);
+      const savedProfile = getFromStorage<ProfileData | null>(STORAGE_KEYS.PROFILE, null);
+      const savedSpotlight = getFromStorage(STORAGE_KEYS.SPOTLIGHT, null);
+      const savedShop = getFromStorage(STORAGE_KEYS.SHOP, null);
+      const savedMedia = getFromStorage(STORAGE_KEYS.MEDIA, null);
+      const savedSticker = getFromStorage<{visible: boolean; image: string} | null>(STORAGE_KEYS.STICKER, null);
       
       if (savedProfile) {
-        const parsedProfile = JSON.parse(savedProfile);
         // Ensure sticker is always visible
-        if (parsedProfile.sticker) {
-          parsedProfile.sticker.visible = true;
+        if (savedProfile.sticker) {
+          savedProfile.sticker.visible = true;
         }
-        setProfile(parsedProfile);
+        setProfile(savedProfile);
         console.log('📦 Loaded profile from localStorage');
       }
       
       if (savedSpotlight) {
-        setSpotlightItems(JSON.parse(savedSpotlight));
+        setSpotlightItems(savedSpotlight);
         console.log('📦 Loaded spotlight items from localStorage');
       }
       
       if (savedShop) {
-        setShopItems(JSON.parse(savedShop));
+        setShopItems(savedShop);
         console.log('📦 Loaded shop items from localStorage');
       }
       
       if (savedMedia) {
-        setMediaItems(JSON.parse(savedMedia));
+        // Use type assertion
+        setMediaItemsWithAssertion(savedMedia);
         console.log('📦 Loaded media items from localStorage');
       }
 
       if (savedSticker) {
-        const parsedSticker = JSON.parse(savedSticker);
         // Always ensure sticker is visible
-        parsedSticker.visible = true;
+        savedSticker.visible = true;
         setProfile(prev => ({
           ...prev,
-          sticker: parsedSticker
+          sticker: savedSticker
         }));
         console.log('📦 Loaded sticker data from localStorage');
       }
@@ -201,12 +187,12 @@ export function IntegratedProfile() {
       setProfile(DEFAULT_PROFILE);
       setSpotlightItems(exampleSpotlightItems);
       setShopItems(exampleShopItems);
-      setMediaItems(exampleMediaItems);
+      setMediaItemsWithAssertion(exampleMediaItems);
     }
     
     // Ensure loading is complete
     setIsLoading(false);
-  }, [isMounted]);
+  }, [isMounted, getFromStorage]);
   
   // Save profile data to localStorage
   const saveProfileData = (updatedProfile: ProfileData) => {
@@ -273,8 +259,8 @@ export function IntegratedProfile() {
       
       try {
         // Clear localStorage wallet connection state
-        localStorage.removeItem('simple-wallet-connected');
-        localStorage.removeItem('simple-wallet-address');
+        removeFromStorage('simple-wallet-connected');
+        removeFromStorage('simple-wallet-address');
         
         // Update authentication state
         setIsAuthenticated(false);
