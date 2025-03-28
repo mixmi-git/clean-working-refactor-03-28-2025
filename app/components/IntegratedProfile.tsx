@@ -53,19 +53,62 @@ function IntegratedProfileContent() {
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [isWalletOpen, setIsWalletOpen] = useState(false);
   const [walletLoading, setWalletLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | undefined>(undefined);
 
-  // Connect wallet function (simplified for now)
+  // Wallet simulation vars
+  const WALLET_ADDRESSES = [
+    '0x8a5e9F03A54c77B67f7D0b1B39B3f6F5a9F3a76C', // Test address 1
+    '0xDe9c0582fB4efC9BF95aE1C8AF87fE53B796d841', // Test address 2
+    '0x7F5a9F03A54c77B67f7D0b1B39B3f6F5a9F3a76C'  // Test address 3
+  ];
+
+  // Connect wallet function with more realistic implementation
   const connectWallet = async () => {
     try {
       setWalletLoading(true);
-      // Simplified wallet connection logic
-      const mockAddress = '0x' + Math.random().toString(16).substring(2, 14);
-      updateProfileField('walletAddress', mockAddress);
-      updateProfileField('showWalletAddress', true);
-      setTimeout(() => setWalletLoading(false), 500); // Simulate loading
+      setStatusMessage("Connecting wallet...");
+      
+      // Simulate network delay for a more realistic wallet connection
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      
+      if (!profile.walletAddress) {
+        // If not connected, pick a random address
+        const randomIndex = Math.floor(Math.random() * WALLET_ADDRESSES.length);
+        const address = WALLET_ADDRESSES[randomIndex];
+        
+        // Update profile with the wallet address
+        updateProfileField('walletAddress', address);
+        updateProfileField('showWalletAddress', true);
+        setStatusMessage("Wallet connected successfully!");
+        
+        // Enable edit mode since wallet is now connected
+        localStorage.setItem('profile_mode', ProfileMode.Edit);
+        updateProfileField('hasEditedProfile', true);
+        
+        console.log('✅ Connected to wallet:', address);
+      } else {
+        // If already connected, disconnect
+        updateProfileField('walletAddress', '');
+        updateProfileField('showWalletAddress', false);
+        setStatusMessage("Wallet disconnected");
+        console.log('❌ Disconnected wallet');
+      }
+      
+      // Clear status message after a delay
+      setTimeout(() => {
+        setStatusMessage(undefined);
+        setWalletLoading(false);
+      }, 2000);
+      
     } catch (error) {
       console.error('Error connecting wallet:', error);
+      setStatusMessage("Error connecting wallet");
       setWalletLoading(false);
+      
+      // Clear error message after delay
+      setTimeout(() => {
+        setStatusMessage(undefined);
+      }, 3000);
     }
   };
 
@@ -84,7 +127,7 @@ function IntegratedProfileContent() {
         isAuthenticated={isAuthenticated}
         isLoading={walletLoading}
         onLoginToggle={connectWallet}
-        statusMessage={isLoading ? "Loading profile..." : undefined}
+        statusMessage={statusMessage || (isLoading ? "Loading profile..." : undefined)}
       />
       
       <main className="flex-grow">
@@ -100,6 +143,7 @@ function IntegratedProfileContent() {
             mediaItems={mediaItems}
             spotlightItems={spotlightItems}
             shopItems={shopItems}
+            isAuthenticated={isAuthenticated}
             onConfigClick={() => setIsConfigOpen(true)}
             onWalletClick={() => setIsWalletOpen(true)}
             onUpdateSectionVisibility={updateSectionVisibility}
