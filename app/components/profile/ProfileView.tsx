@@ -141,6 +141,8 @@ interface ProfileViewProps {
   onUpdateShopItems?: (items: ShopItemType[]) => void;
   onUpdateStickerData?: (data: { visible: boolean; image: string }) => void;
   onUpdateSectionVisibility?: (field: keyof ProfileData['sectionVisibility'], value: boolean) => void;
+  onConfigClick?: () => void;
+  onWalletClick?: () => void;
 }
 
 // Inline styles for the rotation animation
@@ -178,7 +180,9 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   onUpdateMediaItems,
   onUpdateShopItems,
   onUpdateStickerData,
-  onUpdateSectionVisibility
+  onUpdateSectionVisibility,
+  onConfigClick = () => {},
+  onWalletClick = () => {}
 }) => {
   // Use useEffect to handle client-side-only state changes
   const [mounted, setMounted] = useState(false);
