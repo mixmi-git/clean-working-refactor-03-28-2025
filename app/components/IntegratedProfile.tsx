@@ -55,6 +55,10 @@ function IntegratedProfileContent() {
   const [isWalletOpen, setIsWalletOpen] = useState(false);
   const [walletLoading, setWalletLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | undefined>(undefined);
+  
+  // Add local override for auth state if needed
+  const [localAuthState, setLocalAuthState] = useState<boolean | null>(null);
+  const [localWalletAddress, setLocalWalletAddress] = useState<string | null>(null);
 
   // Use the auth hook for Stacks wallet integration
   const { 
@@ -64,15 +68,43 @@ function IntegratedProfileContent() {
     disconnectWallet,
     isInitialized
   } = useAuth();
+  
+  // Check localStorage on mount for wallet connection
+  useEffect(() => {
+    // Direct check for wallet connection in localStorage
+    if (typeof window !== 'undefined') {
+      const connected = localStorage.getItem('mixmi-wallet-connected') === 'true';
+      const address = localStorage.getItem('mixmi-wallet-address');
+      
+      console.log('Initial wallet check from localStorage:', { connected, address });
+      
+      if (connected && address) {
+        setLocalAuthState(true);
+        setLocalWalletAddress(address);
+        
+        // Update profile directly
+        updateProfileField('walletAddress', address);
+        updateProfileField('showWalletAddress', true);
+        updateProfileField('hasEditedProfile', true);
+        
+        // Set profile mode
+        localStorage.setItem('profile_mode', ProfileMode.Edit);
+      }
+    }
+  }, [updateProfileField]);
 
   // When wallet is connected/disconnected, update the profile
   useEffect(() => {
+    // Use local auth state override if available
+    const effectiveIsAuthenticated = localAuthState !== null ? localAuthState : isAuthenticated;
+    const effectiveUserAddress = localWalletAddress || userAddress;
+    
     if (isInitialized) {
-      if (isAuthenticated && userAddress) {
-        console.log('Wallet connected, updating profile with address:', userAddress);
+      if (effectiveIsAuthenticated && effectiveUserAddress) {
+        console.log('Wallet connected, updating profile with address:', effectiveUserAddress);
         
         // Update profile with wallet address from Stacks
-        updateProfileField('walletAddress', userAddress);
+        updateProfileField('walletAddress', effectiveUserAddress);
         updateProfileField('showWalletAddress', true);
         
         // Enable edit mode since wallet is connected
@@ -83,7 +115,7 @@ function IntegratedProfileContent() {
         try {
           const profileData = {
             ...profile,
-            walletAddress: userAddress,
+            walletAddress: effectiveUserAddress,
             showWalletAddress: true,
             hasEditedProfile: true
           };
@@ -91,7 +123,7 @@ function IntegratedProfileContent() {
         } catch (e) {
           console.error('Error updating profile in localStorage:', e);
         }
-      } else if (!isAuthenticated && profile.walletAddress) {
+      } else if (!effectiveIsAuthenticated && profile.walletAddress) {
         console.log('Wallet disconnected, clearing wallet address from profile');
         
         // Clear wallet address when disconnected
@@ -111,17 +143,24 @@ function IntegratedProfileContent() {
         }
       }
     }
-  }, [isAuthenticated, userAddress, isInitialized, updateProfileField, profile]);
+  }, [isAuthenticated, userAddress, isInitialized, updateProfileField, profile, localAuthState, localWalletAddress]);
 
   // Handle wallet connection
   const handleToggleWallet = async () => {
+    // Use effective authentication state (local override or from hook)
+    const effectiveIsAuthenticated = localAuthState !== null ? localAuthState : isAuthenticated;
+    
     try {
       setWalletLoading(true);
-      setStatusMessage(isAuthenticated ? "Disconnecting wallet..." : "Connecting wallet...");
+      setStatusMessage(effectiveIsAuthenticated ? "Disconnecting wallet..." : "Connecting wallet...");
       
-      if (isAuthenticated) {
+      if (effectiveIsAuthenticated) {
+        // Clear local override
+        setLocalAuthState(null);
+        setLocalWalletAddress(null);
+        
+        // Disconnect through hook
         await disconnectWallet();
-        setStatusMessage("Wallet disconnected");
         
         // Ensure UI updates by manually clearing localStorage values
         localStorage.removeItem('mixmi-wallet-connected');
@@ -129,51 +168,16 @@ function IntegratedProfileContent() {
         localStorage.removeItem('mixmi-wallet-accounts');
         localStorage.setItem('profile_mode', ProfileMode.View);
         
+        setStatusMessage("Wallet disconnected");
+        
         // Force a page reload to ensure clean state
         setTimeout(() => {
           window.location.reload();
         }, 1000);
       } else {
-        // Connect wallet first
+        // Connect wallet through hook
         await connectWallet();
         setStatusMessage("Wallet connected successfully!");
-        
-        // Since we need to ensure the auth state is updated,
-        // we'll directly check for wallet connection success
-        if (typeof window !== 'undefined') {
-          const connected = localStorage.getItem('mixmi-wallet-connected') === 'true';
-          const address = localStorage.getItem('mixmi-wallet-address');
-          
-          console.log('Wallet connection check:', { connected, address });
-          
-          if (connected && address) {
-            // Manually update profile
-            updateProfileField('walletAddress', address);
-            updateProfileField('showWalletAddress', true);
-            updateProfileField('hasEditedProfile', true);
-            
-            // Force localStorage update
-            try {
-              const profileData = {
-                ...profile,
-                walletAddress: address,
-                showWalletAddress: true,
-                hasEditedProfile: true
-              };
-              localStorage.setItem('mixmi_profile_data', JSON.stringify(profileData));
-              localStorage.setItem('profile_mode', ProfileMode.Edit);
-            } catch (e) {
-              console.error('Error updating profile in localStorage:', e);
-            }
-            
-            // Force a page reload to ensure clean state
-            setTimeout(() => {
-              window.location.reload();
-            }, 1000);
-            
-            return;
-          }
-        }
       }
       
       // Clear status message after a delay
@@ -194,20 +198,18 @@ function IntegratedProfileContent() {
     }
   };
 
-  // Handle edit profile
-  const handleEditProfile = () => {
-    localStorage.setItem('profile_mode', ProfileMode.Edit);
-    updateProfileField('hasEditedProfile', true);
-  };
+  // For UI purposes, use effective authentication state
+  const effectiveIsAuthenticated = localAuthState !== null ? localAuthState : isAuthenticated;
+  const effectiveUserAddress = localWalletAddress || userAddress || profile.walletAddress;
 
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar 
-        isAuthenticated={isAuthenticated}
+        isAuthenticated={effectiveIsAuthenticated}
         isLoading={walletLoading}
         onLoginToggle={handleToggleWallet}
         statusMessage={statusMessage || (isLoading ? "Loading profile..." : undefined)}
-        walletAddress={userAddress || profile.walletAddress}
+        walletAddress={effectiveUserAddress}
       />
       
       <main className="flex-grow">
@@ -223,12 +225,15 @@ function IntegratedProfileContent() {
             mediaItems={mediaItems}
             spotlightItems={spotlightItems}
             shopItems={shopItems}
-            isAuthenticated={isAuthenticated}
+            isAuthenticated={effectiveIsAuthenticated}
             onConfigClick={() => setIsConfigOpen(true)}
             onWalletClick={() => setIsWalletOpen(true)}
             onUpdateSectionVisibility={updateSectionVisibility}
             onUpdateStickerData={updateStickerData}
-            onEditProfile={handleEditProfile}
+            onEditProfile={() => {
+              localStorage.setItem('profile_mode', ProfileMode.Edit);
+              updateProfileField('hasEditedProfile', true);
+            }}
             onUpdateProfile={updateProfileField}
             onUpdateSpotlightItems={(items) => {
               items.forEach(item => {

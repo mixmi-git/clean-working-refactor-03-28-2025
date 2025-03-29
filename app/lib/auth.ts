@@ -195,7 +195,7 @@ export const useAuth = () => {
             name: 'Mixmi',
             icon: window.location.origin + '/favicon.ico',
           },
-          redirectTo: window.location.origin,
+          redirectTo: window.location.origin + '/integrated',
           onFinish: async () => {
             console.log('✅ Connect dialog finished, checking session...');
             
@@ -207,13 +207,7 @@ export const useAuth = () => {
                 
                 console.log('✅ User signed in! Address:', address);
                 
-                // Update auth state
-                setIsAuthenticated(true);
-                setUserAddress(address);
-                setAvailableAccounts([address]);
-                setCurrentAccount(address);
-                
-                // Store for persistence - this is critical for the UI to update
+                // Store critical data in localStorage for persistence across page reloads
                 localStorage.setItem('mixmi-wallet-connected', 'true');
                 localStorage.setItem('mixmi-wallet-provider', 'connect');
                 localStorage.setItem('mixmi-wallet-accounts', JSON.stringify([address]));
@@ -221,13 +215,8 @@ export const useAuth = () => {
                 localStorage.setItem('mixmi-last-auth-check', new Date().toISOString());
                 localStorage.setItem('profile_mode', 'edit');
                 
-                // Force refresh to ensure the UI updates
-                setTimeout(() => {
-                  setIsAuthenticated(true);
-                  setUserAddress(address);
-                  setRefreshCounter(prev => prev + 1);
-                }, 500);
-                
+                // Force page reload - simplest way to ensure clean state
+                window.location.reload();
               } else if (userSession.isSignInPending()) {
                 console.log("🔄 Handling pending sign in...");
                 try {
@@ -235,18 +224,14 @@ export const useAuth = () => {
                   const address = userData.profile.stxAddress.mainnet;
                   
                   console.log('✅ Pending sign in resolved! Address:', address);
-                  setIsAuthenticated(true);
-                  setUserAddress(address);
-                  setCurrentAccount(address);
-                  setAvailableAccounts([address]);
                   
                   // Store for persistence
                   localStorage.setItem('mixmi-wallet-connected', 'true');
                   localStorage.setItem('mixmi-wallet-address', address);
                   localStorage.setItem('profile_mode', 'edit');
                   
-                  // Explicitly force a refresh
-                  setRefreshCounter(prev => prev + 1);
+                  // Force page reload
+                  window.location.reload();
                 } catch (e) {
                   console.error('Error handling pending sign in:', e);
                 }
@@ -255,6 +240,11 @@ export const useAuth = () => {
               }
             } catch (error) {
               console.error("Error in onFinish callback:", error);
+              
+              // Even if there's an error, try to reload if there's data in localStorage
+              if (localStorage.getItem('mixmi-wallet-connected') === 'true') {
+                window.location.reload();
+              }
             }
             
             connectionInProgress = false;
