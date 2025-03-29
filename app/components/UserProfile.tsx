@@ -20,9 +20,11 @@ export function UserProfile() {
   
   // Periodically refresh auth state
   useEffect(() => {
+    // Only poll occasionally to avoid excessive updates
     const intervalId = setInterval(() => {
+      console.log('UserProfile: Occasional auth refresh');
       refreshAuthState();
-    }, 5000);
+    }, 30000); // Reduced from 5000ms to 30000ms (30 seconds)
     
     return () => clearInterval(intervalId);
   }, [refreshAuthState]);

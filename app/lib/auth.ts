@@ -208,7 +208,10 @@ export const useAuth = () => {
   
   // Force-refresh the auth state from localStorage
   const refreshAuthState = useCallback(() => {
-    if (DEV_MODE) console.log("🔄 Refreshing auth state...");
+    // Only log in development mode and avoid excessive logging
+    const shouldLog = DEV_MODE && Math.random() < 0.1; // Only log ~10% of refreshes
+    
+    if (shouldLog) console.log("🔄 Refreshing auth state...");
     
     try {
       // First check if isConnected() reports true (modern API)
@@ -223,7 +226,7 @@ export const useAuth = () => {
       localStorage.setItem('mixmi-last-auth-check', timestamp);
       setLastAuthCheck(timestamp);
       
-      if (DEV_MODE) {
+      if (shouldLog) {
         console.log("Auth state refresh:", {
           modernConnected,
           walletConnected,
