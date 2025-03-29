@@ -374,7 +374,25 @@ export const useAuth = () => {
         return
       }
       
-      // Second check: look for blockstack-session data in localStorage
+      // Second check: Check if we have a wallet address in localStorage
+      if (typeof window !== 'undefined') {
+        try {
+          const walletConnected = localStorage.getItem('mixmi-wallet-connected') === 'true';
+          const walletAddress = localStorage.getItem('mixmi-wallet-address');
+          
+          if (walletConnected && walletAddress) {
+            console.log('Auth: Found wallet connection data in localStorage', walletAddress);
+            setIsAuthenticated(true);
+            setUserAddress(walletAddress);
+            setCurrentAccount(walletAddress);
+            return;
+          }
+        } catch (e) {
+          console.error('Auth: Error reading wallet data from localStorage:', e);
+        }
+      }
+      
+      // Third check: look for blockstack-session data in localStorage
       if (typeof window !== 'undefined') {
         try {
           // Check when the last auth check was performed
@@ -410,7 +428,7 @@ export const useAuth = () => {
         }
       }
       
-      // Third check: If we already have a userAddress set but isUserSignedIn is false
+      // Fourth check: If we already have a userAddress set but isUserSignedIn is false
       // This handles edge cases where the session might not be detected but we know the user is connected
       if (userAddress) {
         console.log('Auth: User address exists but session not detected, keeping authenticated state');
@@ -461,8 +479,12 @@ export const useAuth = () => {
         const keysToRemove = Object.keys(localStorage).filter(key => 
           (key.includes('blockstack') || 
           key.includes('stacks') ||
-          key.includes('authResponse') ||
-          key.includes('mixmi-last-auth-check')) &&
+          key.includes('authResponse')) &&
+          // Don't remove wallet connection data
+          !key.includes('mixmi-wallet-connected') &&
+          !key.includes('mixmi-wallet-address') &&
+          !key.includes('mixmi-wallet-provider') &&
+          !key.includes('mixmi-wallet-accounts') &&
           // Don't remove content data
           !key.includes('mixmi_profile_data') &&
           !key.includes('mixmi_spotlight_items') &&
@@ -568,7 +590,13 @@ export const useAuth = () => {
         const keysToRemove = Object.keys(localStorage).filter(key => 
           key.includes('blockstack') || 
           key.includes('stacks') ||
-          key.includes('authResponse')
+          key.includes('authResponse') ||
+          // Also clear mixmi wallet connection items
+          key.includes('mixmi-wallet-connected') ||
+          key.includes('mixmi-wallet-address') ||
+          key.includes('mixmi-wallet-provider') ||
+          key.includes('mixmi-wallet-accounts') ||
+          key.includes('mixmi-last-auth-check')
         );
         
         console.log('Auth: Clearing session data from localStorage:', keysToRemove);
@@ -579,6 +607,9 @@ export const useAuth = () => {
             console.error(`Error removing ${key}:`, e);
           }
         });
+        
+        // Set profile mode to view
+        localStorage.setItem('profile_mode', 'view');
       }
       
       // Reset auth state

@@ -95,17 +95,29 @@ function IntegratedProfileContent() {
       if (isAuthenticated) {
         // Disconnect through hook
         await disconnectWallet();
-        setStatusMessage("Wallet disconnected");
         
-        // Set to view mode
+        // Set view mode as a fallback
         localStorage.setItem('profile_mode', ProfileMode.View);
+        
+        // Update profile data
+        updateProfileField('walletAddress', '');
+        updateProfileField('showWalletAddress', false);
+        
+        setStatusMessage("Wallet disconnected");
       } else {
         // Connect wallet through hook
         await connectWallet();
-        setStatusMessage("Wallet connected successfully!");
         
-        // Set to edit mode
-        localStorage.setItem('profile_mode', ProfileMode.Edit);
+        // Add a fallback in case the app doesn't reload - check localStorage
+        const walletAddress = localStorage.getItem('mixmi-wallet-address');
+        if (walletAddress) {
+          // Update profile data
+          updateProfileField('walletAddress', walletAddress);
+          updateProfileField('showWalletAddress', true);
+          localStorage.setItem('profile_mode', ProfileMode.Edit);
+        }
+        
+        setStatusMessage("Wallet connected successfully!");
       }
       
       // Clear status message after a delay
