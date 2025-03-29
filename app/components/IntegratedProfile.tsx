@@ -235,7 +235,11 @@ function IntegratedProfileContent() {
         ) : (
           // Main profile view
           <ProfileView
-            profile={profile}
+            profile={{
+              ...profile,
+              // Always ensure wallet address is available when authenticated
+              walletAddress: isAuthenticated && userAddress ? userAddress : profile.walletAddress
+            }}
             mediaItems={mediaItems}
             spotlightItems={spotlightItems}
             shopItems={shopItems}

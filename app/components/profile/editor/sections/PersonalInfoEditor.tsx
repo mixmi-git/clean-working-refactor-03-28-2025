@@ -194,25 +194,31 @@ export const PersonalInfoEditor: React.FC<PersonalInfoEditorProps> = ({
           />
         </div>
 
-        {formData.walletAddress && (
-          <div className="flex items-center justify-between space-x-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700/50">
-            <div className="flex flex-col space-y-1">
-              <Label>Wallet Address</Label>
+        {/* Always show wallet address section, with a message if no wallet is connected */}
+        <div className="flex items-center justify-between space-x-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700/50">
+          <div className="flex flex-col space-y-1">
+            <Label>Wallet Address</Label>
+            {formData.walletAddress ? (
               <div className="text-sm text-gray-400">
                 {formData.walletAddress.slice(0, 6)}...{formData.walletAddress.slice(-4)}
               </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Label htmlFor="show-wallet" className="text-sm text-gray-300">Show publicly</Label>
-              <Switch
-                id="show-wallet"
-                checked={formData.showWalletAddress !== false}
-                onCheckedChange={(checked) => handleInputChange('showWalletAddress', checked)}
-                className="data-[state=checked]:bg-cyan-600 data-[state=unchecked]:bg-gray-600 border-2 border-gray-400"
-              />
-            </div>
+            ) : (
+              <div className="text-sm text-gray-500 italic">
+                No wallet connected
+              </div>
+            )}
           </div>
-        )}
+          <div className="flex items-center space-x-2">
+            <Label htmlFor="show-wallet" className="text-sm text-gray-300">Show publicly</Label>
+            <Switch
+              id="show-wallet"
+              checked={formData.showWalletAddress !== false}
+              onCheckedChange={(checked) => handleInputChange('showWalletAddress', checked)}
+              className="data-[state=checked]:bg-cyan-600 data-[state=unchecked]:bg-gray-600 border-2 border-gray-400"
+              disabled={!formData.walletAddress}
+            />
+          </div>
+        </div>
 
         <div className="space-y-4">
           <Label>Social Links</Label>

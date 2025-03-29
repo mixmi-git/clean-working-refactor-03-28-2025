@@ -243,7 +243,12 @@ const PersonalInfoSection: React.FC<PersonalInfoSectionProps> = ({
       <PersonalInfoEditorModal
         isOpen={isEditorOpen}
         onClose={() => setIsEditorOpen(false)}
-        profile={profile}
+        profile={{
+          ...profile,
+          // Ensure wallet address is passed even if undefined
+          walletAddress: profile.walletAddress || undefined,
+          showWalletAddress: profile.showWalletAddress !== false
+        }}
         onSave={handleSave}
       />
     </section>
