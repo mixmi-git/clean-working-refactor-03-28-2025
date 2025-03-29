@@ -28,41 +28,8 @@ declare module '@stacks/connect' {
 const appConfig = new AppConfig(['store_write'])
 const userSession = new UserSession({ appConfig })
 
-// Development mode flag for easier testing
+// Development mode flag for logging only
 const DEV_MODE = process.env.NODE_ENV === 'development';
-// Dev flag to force authentication in development - can be toggled in console
-let DEV_FORCE_AUTH = false;
-
-// Make DEV_FORCE_AUTH accessible from console in development mode
-if (typeof window !== 'undefined' && DEV_MODE) {
-  (window as any).DEV_FORCE_AUTH = DEV_FORCE_AUTH;
-  (window as any).toggleAuth = () => {
-    DEV_FORCE_AUTH = !DEV_FORCE_AUTH;
-    console.log(`🔧 DEV: Authentication ${DEV_FORCE_AUTH ? 'FORCED' : 'NORMAL'}`);
-    (window as any).DEV_FORCE_AUTH = DEV_FORCE_AUTH;
-    
-    // Trigger a custom event that components can listen for
-    try {
-      const event = new CustomEvent('dev-auth-changed', { 
-        detail: { forced: DEV_FORCE_AUTH } 
-      });
-      window.dispatchEvent(event);
-      console.log('🔧 DEV: Dispatched dev-auth-changed event');
-    } catch (e) {
-      console.error('Failed to dispatch auth change event:', e);
-    }
-    
-    return DEV_FORCE_AUTH;
-  };
-  
-  // Add a helper to check auth state
-  (window as any).checkAuth = () => {
-    console.log({
-      DEV_FORCE_AUTH,
-      windowDEV_FORCE_AUTH: (window as any).DEV_FORCE_AUTH
-    });
-  };
-}
 
 // Global state to track connection attempts
 let connectionInProgress = false;
@@ -191,44 +158,6 @@ export const useAuth = () => {
   const [availableAccounts, setAvailableAccounts] = useState<string[]>([]);
   const [currentAccount, setCurrentAccount] = useState<string | null>(null);
 
-  // Listen for dev-auth-changed events
-  useEffect(() => {
-    if (DEV_MODE && typeof window !== 'undefined') {
-      const handleDevAuthChanged = (event: Event) => {
-        const customEvent = event as CustomEvent<{forced: boolean}>;
-        console.log('🔧 DEV: Auth change event received:', customEvent.detail);
-        
-        if (customEvent.detail.forced) {
-          // Force authentication
-          setIsAuthenticated(true);
-          setUserAddress('SP00000000000000000000');
-          setCurrentAccount('SP00000000000000000000');
-          setAvailableAccounts(['SP00000000000000000000']);
-        } else {
-          // Clear forced authentication
-          setIsAuthenticated(false);
-          setUserAddress(null);
-          setCurrentAccount(null);
-          setAvailableAccounts([]);
-        }
-      };
-      
-      window.addEventListener('dev-auth-changed', handleDevAuthChanged);
-      return () => window.removeEventListener('dev-auth-changed', handleDevAuthChanged);
-    }
-  }, []);
-
-  // In development mode, we can force authentication for testing
-  useEffect(() => {
-    if (DEV_MODE && DEV_FORCE_AUTH && !isAuthenticated && isInitialized) {
-      console.log('🔧 DEV: Forcing authentication state');
-      setIsAuthenticated(true);
-      setUserAddress('SP00000000000000000000');
-      setCurrentAccount('SP00000000000000000000');
-      setAvailableAccounts(['SP00000000000000000000']);
-    }
-  }, [isInitialized, isAuthenticated]);
-
   // Function to connect wallet
   const connectWallet = useCallback(async () => {
     console.log("🔄 Connect wallet called at:", new Date().toISOString());
@@ -241,6 +170,7 @@ export const useAuth = () => {
     
     // Track whether a connection is in progress
     connectionInProgress = true;
+    connectionAttemptTimestamp = Date.now();
     console.log("🔌 Connection attempt started at:", new Date().toISOString());
     
     try {
@@ -254,15 +184,11 @@ export const useAuth = () => {
         return;
       }
       
-      // SIMPLIFIED APPROACH - Use standard showConnect for all wallet connections
       try {
         // Dynamically import minimal dependencies
-        const { showConnect, AppConfig, UserSession } = await import('@stacks/connect');
+        const { showConnect } = await import('@stacks/connect');
         
-        // Create a fresh session just for this connection
-        const appConfig = new AppConfig(['store_write']);
-        
-        console.log("🔧 Using standard wallet connection dialog");
+        console.log("🔧 Showing Stacks wallet connection dialog");
         
         showConnect({
           appDetails: {
@@ -270,61 +196,70 @@ export const useAuth = () => {
             icon: window.location.origin + '/favicon.ico',
           },
           redirectTo: window.location.origin,
-          onFinish: () => {
+          onFinish: async () => {
             console.log('✅ Connect dialog finished, checking session...');
             
-            // Use the singleton userSession for consistency
-            if (userSession.isUserSignedIn()) {
-              const userData = userSession.loadUserData();
-              const address = userData.profile.stxAddress.mainnet;
-              
-              console.log('✅ User signed in! Address:', address);
-              setIsAuthenticated(true);
-              setUserAddress(address);
-              setAvailableAccounts([address]);
-              setCurrentAccount(address);
-              
-              // Store for persistence
-              try {
-                localStorage.setItem('mixmi-wallet-connected', 'true');
-                localStorage.setItem('mixmi-wallet-provider', 'connect');
-                localStorage.setItem('mixmi-wallet-accounts', JSON.stringify([address]));
-                localStorage.setItem('mixmi-wallet-address', address);
-                localStorage.setItem('mixmi-last-auth-check', new Date().toISOString());
+            try {
+              // Check if user is signed in after connect dialog closes
+              if (userSession.isUserSignedIn()) {
+                const userData = userSession.loadUserData();
+                const address = userData.profile.stxAddress.mainnet;
                 
-                // Explicitly set profile mode to Edit when authenticated
-                localStorage.setItem('profile_mode', 'edit');
-              } catch (e) {
-                console.error('Error saving connection data:', e);
-              }
-              
-              // Force a refresh to ensure state is updated
-              forceRefresh();
-            } else {
-              console.log("⚠️ Connect dialog finished but user not signed in");
-              // Try to handle pending sign in
-              if (userSession.isSignInPending()) {
+                console.log('✅ User signed in! Address:', address);
+                
+                // Update auth state
+                setIsAuthenticated(true);
+                setUserAddress(address);
+                setAvailableAccounts([address]);
+                setCurrentAccount(address);
+                
+                // Store for persistence
+                try {
+                  localStorage.setItem('mixmi-wallet-connected', 'true');
+                  localStorage.setItem('mixmi-wallet-provider', 'connect');
+                  localStorage.setItem('mixmi-wallet-accounts', JSON.stringify([address]));
+                  localStorage.setItem('mixmi-wallet-address', address);
+                  localStorage.setItem('mixmi-last-auth-check', new Date().toISOString());
+                  
+                  // Explicitly set profile mode to Edit when authenticated
+                  localStorage.setItem('profile_mode', 'edit');
+                } catch (e) {
+                  console.error('Error saving connection data:', e);
+                }
+                
+                // Force refresh to ensure the UI updates
+                setRefreshCounter(prev => prev + 1);
+              } else if (userSession.isSignInPending()) {
                 console.log("🔄 Handling pending sign in...");
-                userSession.handlePendingSignIn()
-                  .then(userData => {
-                    const address = userData.profile.stxAddress.mainnet;
-                    setIsAuthenticated(true);
-                    setUserAddress(address);
-                    forceRefresh();
-                  })
-                  .catch(err => {
-                    console.error("⚠️ Error handling pending sign in:", err);
-                  });
+                try {
+                  const userData = await userSession.handlePendingSignIn();
+                  const address = userData.profile.stxAddress.mainnet;
+                  
+                  console.log('✅ Pending sign in resolved! Address:', address);
+                  setIsAuthenticated(true);
+                  setUserAddress(address);
+                  setCurrentAccount(address);
+                  setAvailableAccounts([address]);
+                  
+                  // Store for persistence
+                  localStorage.setItem('mixmi-wallet-connected', 'true');
+                  localStorage.setItem('mixmi-wallet-address', address);
+                  localStorage.setItem('profile_mode', 'edit');
+                } catch (e) {
+                  console.error('Error handling pending sign in:', e);
+                }
+              } else {
+                console.log("⚠️ Connect dialog finished but user not signed in");
               }
+            } catch (error) {
+              console.error("Error in onFinish callback:", error);
             }
             
             connectionInProgress = false;
           },
-          userSession: userSession, // Use the singleton userSession
+          userSession: userSession,
         });
         
-        // Return early since showConnect is asynchronous
-        return;
       } catch (error) {
         console.error("Error in wallet connection:", error);
         connectionInProgress = false;
@@ -614,15 +549,6 @@ export const useAuth = () => {
   const refreshAuthState = useCallback(() => {
     try {
       console.log('🔄 Refreshing auth state...');
-      // For development mode
-      if (DEV_MODE && DEV_FORCE_AUTH) {
-        console.log('🔧 DEV: Using forced authenticated state');
-        setIsAuthenticated(true);
-        setUserAddress('SP00000000000000000000');
-        setIsInitialized(true);
-        return;
-      }
-      
       // Simplest check: see if userSession reports user is signed in
       const isSignedIn = userSession.isUserSignedIn();
       console.log(`👤 User signed in according to userSession: ${isSignedIn}`);
