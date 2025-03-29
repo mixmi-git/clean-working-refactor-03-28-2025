@@ -62,8 +62,39 @@ function IntegratedProfileContent() {
     userAddress, 
     connectWallet, 
     disconnectWallet,
-    isInitialized
+    isInitialized,
+    refreshAuthState
   } = useAuth();
+
+  // Check for wallet connection on initial render
+  useEffect(() => {
+    // Force an auth state refresh on component mount
+    refreshAuthState();
+    
+    // Also check localStorage directly in case the auth hook hasn't initialized yet
+    const walletConnected = localStorage.getItem('mixmi-wallet-connected') === 'true';
+    const walletAddress = localStorage.getItem('mixmi-wallet-address');
+    
+    console.log('Initial wallet check from localStorage:', { walletConnected, walletAddress });
+    
+    // If wallet is connected in localStorage but not yet in auth state, update the profile directly
+    if (walletConnected && walletAddress && !isAuthenticated) {
+      console.log('Found wallet in localStorage but not in auth state, updating profile');
+      updateProfileField('walletAddress', walletAddress);
+      updateProfileField('showWalletAddress', true);
+      localStorage.setItem('profile_mode', ProfileMode.Edit);
+    }
+  }, []);
+
+  // Log authentication state changes to help with debugging
+  useEffect(() => {
+    console.log("IntegratedProfile auth state changed:", {
+      isAuthenticated,
+      userAddress,
+      isInitialized,
+      profileWalletAddress: profile.walletAddress
+    });
+  }, [isAuthenticated, userAddress, isInitialized, profile.walletAddress]);
   
   // When wallet is connected/disconnected, update the profile
   useEffect(() => {
@@ -74,13 +105,15 @@ function IntegratedProfileContent() {
         // Update profile with wallet address
         updateProfileField('walletAddress', userAddress);
         updateProfileField('showWalletAddress', true);
+        updateProfileField('hasEditedProfile', true);
         
         // Enable edit mode since wallet is connected
         localStorage.setItem('profile_mode', ProfileMode.Edit);
       } else if (!isAuthenticated) {
         console.log('Wallet disconnected, ensuring profile is in view mode');
         
-        // Set view mode when disconnected
+        // Don't clear wallet address from profile to allow read-only viewing
+        // of previously edited content, just set mode to view
         localStorage.setItem('profile_mode', ProfileMode.View);
       }
     }

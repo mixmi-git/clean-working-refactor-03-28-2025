@@ -280,8 +280,22 @@ export const useAuth = () => {
                 localStorage.setItem('mixmi-last-auth-check', new Date().toISOString());
                 localStorage.setItem('profile_mode', 'edit');
                 
-                // Force page reload - simplest way to ensure clean state
-                window.location.reload();
+                // Update state before page reload
+                setIsAuthenticated(true);
+                setUserAddress(address);
+                setCurrentAccount(address);
+                
+                // Don't reload immediately - give the state time to update
+                setTimeout(() => {
+                  // Check if a reload is really needed
+                  console.log('Checking if page reload is needed');
+                  if (!isAuthenticated || userAddress !== address) {
+                    console.log('State not updated, forcing page reload');
+                    window.location.reload();
+                  } else {
+                    console.log('State already updated, no reload needed');
+                  }
+                }, 500);
               } else if (userSession.isSignInPending()) {
                 console.log("🔄 Handling pending sign in...");
                 try {
@@ -295,8 +309,17 @@ export const useAuth = () => {
                   localStorage.setItem('mixmi-wallet-address', address);
                   localStorage.setItem('profile_mode', 'edit');
                   
-                  // Force page reload
-                  window.location.reload();
+                  // Update state before reload
+                  setIsAuthenticated(true);
+                  setUserAddress(address);
+                  setCurrentAccount(address);
+                  
+                  // Only reload if state doesn't update
+                  setTimeout(() => {
+                    if (!isAuthenticated || userAddress !== address) {
+                      window.location.reload();
+                    }
+                  }, 500);
                 } catch (e) {
                   console.error('Error handling pending sign in:', e);
                 }
