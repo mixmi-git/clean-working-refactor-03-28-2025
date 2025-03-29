@@ -35,6 +35,71 @@ const DEV_MODE = process.env.NODE_ENV === 'development';
 let connectionInProgress = false;
 let connectionAttemptTimestamp = 0;
 
+// Add a centralized toggleAuth function for development use
+if (typeof window !== 'undefined' && DEV_MODE) {
+  (window as any).toggleAuth = () => {
+    console.log('🔄 Development auth toggle requested');
+    
+    // Check current state in localStorage
+    const isCurrentlyAuthenticated = localStorage.getItem('mixmi-wallet-connected') === 'true';
+    
+    if (isCurrentlyAuthenticated) {
+      // Handle logout - clear authentication data
+      console.log('🔓 Dev toggle: Clearing auth data');
+      
+      // Clear all auth-related localStorage items
+      const keysToRemove = Object.keys(localStorage).filter(key => 
+        (key.includes('blockstack') || 
+        key.includes('stacks') ||
+        key.includes('authResponse') ||
+        key.includes('mixmi-wallet-connected') ||
+        key.includes('mixmi-wallet-address') ||
+        key.includes('mixmi-wallet-accounts') ||
+        key.includes('mixmi-last-auth-check'))
+      );
+      
+      keysToRemove.forEach(key => {
+        try {
+          localStorage.removeItem(key);
+        } catch (e) {
+          console.error(`Error removing ${key}:`, e);
+        }
+      });
+      
+      // Set view mode
+      localStorage.setItem('profile_mode', 'view');
+      
+      // Sign out from userSession
+      if (userSession.isUserSignedIn()) {
+        userSession.signUserOut('');
+      }
+      
+      console.log('🔓 Dev toggle: Auth cleared');
+    } else {
+      // Handle login - set dummy authentication data
+      console.log('🔒 Dev toggle: Setting mock auth data');
+      
+      // Create a dummy Stacks address
+      const mockAddress = 'SP2JXKMSH007NPYAQHKJPQMAQYAD90NQGTVJVQ02B';
+      
+      // Set auth data in localStorage
+      localStorage.setItem('mixmi-wallet-connected', 'true');
+      localStorage.setItem('mixmi-wallet-address', mockAddress);
+      localStorage.setItem('mixmi-wallet-accounts', JSON.stringify([mockAddress]));
+      localStorage.setItem('mixmi-last-auth-check', new Date().toISOString());
+      localStorage.setItem('profile_mode', 'edit');
+      
+      console.log('🔒 Dev toggle: Mock auth data set');
+    }
+    
+    // Return the new state for reference
+    return !isCurrentlyAuthenticated;
+  };
+  
+  // Also set a flag variable for components to check
+  (window as any).DEV_FORCE_AUTH = false;
+}
+
 // Helper function to get the current account from the Stacks wallet
 const getCurrentAccount = async (userSession: UserSession): Promise<string[]> => {
   if (typeof window === 'undefined') return [];

@@ -18,16 +18,6 @@ export function Navbar({
   statusMessage,
   walletAddress
 }: NavbarProps) {
-  // Dev mode check
-  const isDev = process.env.NODE_ENV === 'development';
-  
-  // For dev mode only - force toggle authentication
-  const forceAuthToggle = () => {
-    if (typeof window !== 'undefined' && (window as any).toggleAuth) {
-      (window as any).toggleAuth();
-    }
-  };
-  
   // Format wallet address for display
   const formatAddress = (address: string) => {
     if (!address) return '';
@@ -55,16 +45,6 @@ export function Navbar({
         </div>
         
         <div className="flex items-center gap-3">
-          {/* Dev toggle button - only visible in development */}
-          {isDev && (
-            <Button
-              onClick={forceAuthToggle}
-              className="bg-purple-600 hover:bg-purple-700 text-white"
-            >
-              DEV: {isAuthenticated ? 'Disable Auth' : 'Enable Auth'}
-            </Button>
-          )}
-          
           {/* Display wallet address when authenticated */}
           {isAuthenticated && walletAddress && (
             <div className="text-sm text-cyan-400 flex items-center">
