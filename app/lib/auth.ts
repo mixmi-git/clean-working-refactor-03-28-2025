@@ -866,6 +866,31 @@ export const useAuth = () => {
         return `Error: ${e.message || 'Unknown error'}`;
       }
     };
+    
+    // Add a direct manual authentication function
+    (window as any).forceAuth = (address?: string) => {
+      try {
+        console.log('💪 Force authenticating...');
+        
+        // Use provided address or a default one
+        const walletAddress = address || 'SP2JXKMSH007NPYAQHKJPQMAQYAD90NQGTVJVQ02B';
+        
+        // Set auth data in localStorage
+        localStorage.setItem('mixmi-wallet-connected', 'true');
+        localStorage.setItem('mixmi-wallet-address', walletAddress);
+        localStorage.setItem('mixmi-wallet-accounts', JSON.stringify([walletAddress]));
+        localStorage.setItem('mixmi-last-auth-check', new Date().toISOString());
+        localStorage.setItem('profile_mode', 'edit');
+        
+        console.log('✅ Force auth completed with address:', walletAddress);
+        console.log('Please reload the page to see changes take effect');
+        
+        return 'Auth forced successfully. Reload the page.';
+      } catch (e) {
+        console.error('Error forcing auth:', e);
+        return 'Error forcing auth';
+      }
+    };
   }
 
   return {

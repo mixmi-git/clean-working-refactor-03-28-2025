@@ -84,7 +84,50 @@ function IntegratedProfileContent() {
       updateProfileField('showWalletAddress', true);
       localStorage.setItem('profile_mode', ProfileMode.Edit);
     }
-  }, []);
+    
+    // Expose a debugging utility for the browser console
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+      (window as any).checkProfileState = () => {
+        console.group('🔍 Profile State Debug');
+        console.log('Auth State:', { isAuthenticated, userAddress, isInitialized });
+        console.log('Profile Data:', profile);
+        console.log('Profile Mode:', localStorage.getItem('profile_mode'));
+        console.log('Wallet Connected (localStorage):', localStorage.getItem('mixmi-wallet-connected'));
+        console.log('Wallet Address (localStorage):', localStorage.getItem('mixmi-wallet-address'));
+        console.groupEnd();
+        return 'Profile state logged to console';
+      };
+      
+      // Expose a function to manually set auth state for testing
+      (window as any).setAuth = (state: boolean, address?: string) => {
+        const testAddress = address || 'SP2JXKMSH007NPYAQHKJPQMAQYAD90NQGTVJVQ02B';
+        console.log(`🔧 Setting auth state to ${state} with address ${testAddress}`);
+        
+        if (state) {
+          // Set auth data in localStorage
+          localStorage.setItem('mixmi-wallet-connected', 'true');
+          localStorage.setItem('mixmi-wallet-address', testAddress);
+          localStorage.setItem('profile_mode', ProfileMode.Edit);
+          
+          // Update profile
+          updateProfileField('walletAddress', testAddress);
+          updateProfileField('showWalletAddress', true);
+          
+          console.log('Auth state set to authenticated, reload page to see changes');
+        } else {
+          // Clear auth data
+          localStorage.removeItem('mixmi-wallet-connected');
+          localStorage.removeItem('mixmi-wallet-address');
+          localStorage.setItem('profile_mode', ProfileMode.View);
+          
+          console.log('Auth state set to unauthenticated, reload page to see changes');
+        }
+        
+        // Manually reload the page to ensure state is consistent
+        return 'Auth state changed. Reload page to see changes.';
+      };
+    }
+  }, [isAuthenticated, refreshAuthState, updateProfileField, profile]);
 
   // Log authentication state changes to help with debugging
   useEffect(() => {
