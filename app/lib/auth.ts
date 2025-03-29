@@ -42,6 +42,9 @@ interface ConnectResponse {
       publicKey?: string;
     }>;
   };
+  // Additional potential response formats
+  address?: string;
+  stxAddress?: string;
 }
 
 // Development mode flag for logging only
@@ -305,7 +308,21 @@ export const useAuth = () => {
     try {
       console.log("🔄 Using modern connect API...");
       
+      // Clear any stale connection state before attempting a new connection
+      // This helps ensure a clean slate when reconnecting after a disconnect
+      if (typeof window !== 'undefined') {
+        // Only clear specific items, not profile data
+        if (DEV_MODE) console.log("🧹 Cleaning up any stale connection state before reconnecting");
+        try {
+          // Explicitly disconnect using the modern API first
+          disconnect();
+        } catch (e) {
+          console.error("Error during pre-connect disconnection:", e);
+        }
+      }
+      
       // First try the modern connect approach
+      console.log("🚀 Initiating wallet connection with modern API...");
       const response = await connect({
         appDetails: {
           name: 'Mixmi',
@@ -335,8 +352,86 @@ export const useAuth = () => {
         
         console.log("✅ Authentication state updated, wallet connected!");
       } else {
-        console.log("❌ No address found in connect response");
-        setAuthError("No address returned from wallet");
+        // Better handling for different response formats
+        console.log("⚠️ Standard address path not found, trying alternative paths");
+        
+        try {
+          // Log the full response structure for debugging
+          console.log("📋 Full response structure:", JSON.stringify(response, null, 2));
+          
+          // Try to extract address from different possible paths
+          let address = null;
+          
+          // Try first array element if response is an array
+          if (Array.isArray(response)) {
+            console.log("📋 Response is an array with length:", response.length);
+            if (response.length > 0) {
+              if (response[0]?.address) {
+                address = response[0].address;
+                console.log("✅ Found address in array[0].address:", address);
+              } else if (response[0]?.stxAddress) {
+                address = response[0].stxAddress;
+                console.log("✅ Found address in array[0].stxAddress:", address);
+              } else if (typeof response[0] === 'string') {
+                address = response[0];
+                console.log("✅ Found address as string in array[0]:", address);
+              }
+            }
+          }
+          
+          // Try addresses array if it exists
+          if (!address && response?.addresses && Array.isArray(response.addresses)) {
+            console.log("📋 Checking generic addresses array with length:", response.addresses.length);
+            if (response.addresses.length > 0) {
+              if (response.addresses[0]?.address) {
+                address = response.addresses[0].address;
+                console.log("✅ Found address in addresses[0].address:", address);
+              } else if (typeof response.addresses[0] === 'string') {
+                address = response.addresses[0];
+                console.log("✅ Found address as string in addresses[0]:", address);
+              }
+            }
+          }
+          
+          // Try other common paths
+          if (!address && response?.address) {
+            address = response.address;
+            console.log("✅ Found address directly in response.address:", address);
+          }
+          
+          if (!address && response?.stxAddress) {
+            address = response.stxAddress;
+            console.log("✅ Found address in response.stxAddress:", address);
+          }
+          
+          // If we found an address through any path, use it
+          if (address) {
+            console.log("✅ Successfully extracted address:", address);
+            
+            // Store data in localStorage
+            localStorage.setItem('mixmi-wallet-connected', 'true');
+            localStorage.setItem('mixmi-wallet-provider', 'connect');
+            localStorage.setItem('mixmi-wallet-accounts', JSON.stringify([address]));
+            localStorage.setItem('mixmi-wallet-address', address);
+            localStorage.setItem('mixmi-last-auth-check', new Date().toISOString());
+            localStorage.setItem('profile_mode', 'edit');
+            
+            // Update state
+            setIsAuthenticated(true);
+            setUserAddress(address);
+            setCurrentAccount(address);
+            setAuthError(null);
+            
+            console.log("✅ Authentication state updated via alternative path!");
+            return;
+          } else {
+            console.log("❌ No address found in connect response after trying all paths");
+            setAuthError("Could not extract address from wallet response");
+          }
+        } catch (extractError) {
+          console.error("❌ Error extracting address from response:", extractError);
+          setAuthError("Error processing wallet response");
+        }
       }
     } catch (error: any) {
       console.error("❌ Error connecting wallet:", error);
@@ -419,6 +514,9 @@ export const useAuth = () => {
       localStorage.removeItem('mixmi-wallet-address');
       localStorage.setItem('profile_mode', 'view');
       
+      // Clear any other auth-related data that might cause confusion
+      localStorage.removeItem('mixmi-last-auth-check');
+      
       // Also try legacy signout
       if (userSession.isUserSignedIn()) {
         userSession.signUserOut('/integrated');
@@ -429,9 +527,34 @@ export const useAuth = () => {
       setUserAddress(null);
       setCurrentAccount(null);
       
+      // Reset tracking variables
+      connectionInProgress = false;
+      connectionAttemptTimestamp = 0;
+      
       console.log("✅ Wallet disconnected");
+      
+      // Force a page reload to ensure clean state
+      // This helps with wallet providers that might keep internal state
+      if (typeof window !== 'undefined' && window.location) {
+        console.log("🔄 Reloading page to ensure clean slate");
+        setTimeout(() => {
+          window.location.reload();
+        }, 500); // Short delay to ensure state updates complete
+      }
     } catch (error: any) {
       console.error("❌ Error disconnecting wallet:", error);
+      
+      // Even if there's an error, ensure we reset the state
+      setIsAuthenticated(false);
+      setUserAddress(null);
+      setCurrentAccount(null);
+      
+      // Force reload in case of error too
+      if (typeof window !== 'undefined' && window.location) {
+        setTimeout(() => {
+          window.location.reload();
+        }, 500);
+      }
     }
   }, []);
   
