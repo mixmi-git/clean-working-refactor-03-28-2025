@@ -31,7 +31,7 @@ const userSession = new UserSession({ appConfig })
 // Development mode flag for easier testing
 const DEV_MODE = process.env.NODE_ENV === 'development';
 // Dev flag to force authentication in development - can be toggled in console
-let DEV_FORCE_AUTH = true;
+let DEV_FORCE_AUTH = false;
 
 // Make DEV_FORCE_AUTH accessible from console in development mode
 if (typeof window !== 'undefined' && DEV_MODE) {
@@ -261,7 +261,6 @@ export const useAuth = () => {
         
         // Create a fresh session just for this connection
         const appConfig = new AppConfig(['store_write']);
-        const uSession = new UserSession({ appConfig });
         
         console.log("🔧 Using standard wallet connection dialog");
         
@@ -274,8 +273,9 @@ export const useAuth = () => {
           onFinish: () => {
             console.log('✅ Connect dialog finished, checking session...');
             
-            if (uSession.isUserSignedIn()) {
-              const userData = uSession.loadUserData();
+            // Use the singleton userSession for consistency
+            if (userSession.isUserSignedIn()) {
+              const userData = userSession.loadUserData();
               const address = userData.profile.stxAddress.mainnet;
               
               console.log('✅ User signed in! Address:', address);
@@ -289,17 +289,38 @@ export const useAuth = () => {
                 localStorage.setItem('mixmi-wallet-connected', 'true');
                 localStorage.setItem('mixmi-wallet-provider', 'connect');
                 localStorage.setItem('mixmi-wallet-accounts', JSON.stringify([address]));
+                localStorage.setItem('mixmi-wallet-address', address);
                 localStorage.setItem('mixmi-last-auth-check', new Date().toISOString());
+                
+                // Explicitly set profile mode to Edit when authenticated
+                localStorage.setItem('profile_mode', 'edit');
               } catch (e) {
                 console.error('Error saving connection data:', e);
               }
+              
+              // Force a refresh to ensure state is updated
+              forceRefresh();
             } else {
               console.log("⚠️ Connect dialog finished but user not signed in");
+              // Try to handle pending sign in
+              if (userSession.isSignInPending()) {
+                console.log("🔄 Handling pending sign in...");
+                userSession.handlePendingSignIn()
+                  .then(userData => {
+                    const address = userData.profile.stxAddress.mainnet;
+                    setIsAuthenticated(true);
+                    setUserAddress(address);
+                    forceRefresh();
+                  })
+                  .catch(err => {
+                    console.error("⚠️ Error handling pending sign in:", err);
+                  });
+              }
             }
             
             connectionInProgress = false;
           },
-          userSession: uSession,
+          userSession: userSession, // Use the singleton userSession
         });
         
         // Return early since showConnect is asynchronous
@@ -741,6 +762,83 @@ export const useAuth = () => {
       });
     }
   }, [isAuthenticated]);
+
+  // Add additional debug helper
+  if (typeof window !== 'undefined' && DEV_MODE) {
+    // Make wallet connection debug helpers available
+    (window as any).debugWalletConnection = () => {
+      console.log('🔍 Wallet connection debug:');
+      console.log('- userSession.isUserSignedIn():', userSession.isUserSignedIn());
+      console.log('- userSession.isSignInPending():', userSession.isSignInPending());
+      try {
+        if (userSession.isUserSignedIn()) {
+          const userData = userSession.loadUserData();
+          console.log('- User data:', userData);
+        } else {
+          console.log('- No user data (not signed in)');
+        }
+      } catch (e) {
+        console.error('- Error loading user data:', e);
+      }
+      
+      // Check localStorage
+      console.log('- localStorage items:');
+      try {
+        const walletConnected = localStorage.getItem('mixmi-wallet-connected');
+        const walletProvider = localStorage.getItem('mixmi-wallet-provider');
+        const walletAccounts = localStorage.getItem('mixmi-wallet-accounts');
+        const walletAddress = localStorage.getItem('mixmi-wallet-address');
+        const blockstackSession = localStorage.getItem('blockstack-session');
+        const profileMode = localStorage.getItem('profile_mode');
+        
+        console.log('  - mixmi-wallet-connected:', walletConnected);
+        console.log('  - mixmi-wallet-provider:', walletProvider);
+        console.log('  - mixmi-wallet-accounts:', walletAccounts);
+        console.log('  - mixmi-wallet-address:', walletAddress);
+        console.log('  - blockstack-session exists:', !!blockstackSession);
+        console.log('  - profile_mode:', profileMode);
+      } catch (e) {
+        console.error('- Error reading localStorage:', e);
+      }
+      
+      return 'Debug info logged to console';
+    };
+    
+    // Add manual connect function
+    (window as any).manualConnect = async () => {
+      try {
+        const { showConnect, AppConfig, UserSession } = await import('@stacks/connect');
+        const appConfig = new AppConfig(['store_write']);
+        
+        showConnect({
+          appDetails: {
+            name: 'Mixmi Debug',
+            icon: window.location.origin + '/favicon.ico',
+          },
+          redirectTo: window.location.origin,
+          onFinish: () => {
+            console.log('Manual connect finished');
+            if (userSession.isUserSignedIn()) {
+              const userData = userSession.loadUserData();
+              console.log('Manual connect signed in:', userData);
+              localStorage.setItem('mixmi-wallet-connected', 'true');
+              localStorage.setItem('mixmi-wallet-address', userData.profile.stxAddress.mainnet);
+              localStorage.setItem('profile_mode', 'edit');
+              window.location.reload();
+            } else {
+              console.log('Manual connect did not sign in');
+            }
+          },
+          userSession: userSession,
+        });
+        
+        return 'Manual connect initiated';
+      } catch (e: any) {
+        console.error('Manual connect error:', e);
+        return `Error: ${e.message || 'Unknown error'}`;
+      }
+    };
+  }
 
   return {
     isAuthenticated,

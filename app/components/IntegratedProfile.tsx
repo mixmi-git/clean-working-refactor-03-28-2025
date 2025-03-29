@@ -69,6 +69,8 @@ function IntegratedProfileContent() {
   useEffect(() => {
     if (isInitialized) {
       if (isAuthenticated && userAddress) {
+        console.log('Wallet connected, updating profile with address:', userAddress);
+        
         // Update profile with wallet address from Stacks
         updateProfileField('walletAddress', userAddress);
         updateProfileField('showWalletAddress', true);
@@ -76,13 +78,40 @@ function IntegratedProfileContent() {
         // Enable edit mode since wallet is connected
         localStorage.setItem('profile_mode', ProfileMode.Edit);
         updateProfileField('hasEditedProfile', true);
+        
+        // Force localStorage update to ensure persistence
+        try {
+          const profileData = {
+            ...profile,
+            walletAddress: userAddress,
+            showWalletAddress: true,
+            hasEditedProfile: true
+          };
+          localStorage.setItem('mixmi_profile_data', JSON.stringify(profileData));
+        } catch (e) {
+          console.error('Error updating profile in localStorage:', e);
+        }
       } else if (!isAuthenticated && profile.walletAddress) {
+        console.log('Wallet disconnected, clearing wallet address from profile');
+        
         // Clear wallet address when disconnected
         updateProfileField('walletAddress', '');
         updateProfileField('showWalletAddress', false);
+        
+        // Update localStorage
+        try {
+          const profileData = {
+            ...profile,
+            walletAddress: '',
+            showWalletAddress: false
+          };
+          localStorage.setItem('mixmi_profile_data', JSON.stringify(profileData));
+        } catch (e) {
+          console.error('Error updating profile in localStorage:', e);
+        }
       }
     }
-  }, [isAuthenticated, userAddress, isInitialized, updateProfileField, profile.walletAddress]);
+  }, [isAuthenticated, userAddress, isInitialized, updateProfileField, profile]);
 
   // Handle wallet connection
   const handleToggleWallet = async () => {
