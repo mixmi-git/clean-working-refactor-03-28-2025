@@ -127,17 +127,20 @@ function IntegratedProfileContent() {
         return 'Auth state changed. Reload page to see changes.';
       };
     }
-  }, [isAuthenticated, refreshAuthState, updateProfileField, profile]);
+  // Remove profile from dependencies to avoid infinite loops
+  // Only run this effect once on mount and when auth state changes
+  }, [isAuthenticated, refreshAuthState, updateProfileField]);
 
   // Log authentication state changes to help with debugging
   useEffect(() => {
+    // Only log changes that specifically involve authentication state
     console.log("IntegratedProfile auth state changed:", {
       isAuthenticated,
       userAddress,
-      isInitialized,
-      profileWalletAddress: profile.walletAddress
+      isInitialized
     });
-  }, [isAuthenticated, userAddress, isInitialized, profile.walletAddress]);
+    // Don't include profile.walletAddress in dependencies to avoid cycles
+  }, [isAuthenticated, userAddress, isInitialized]);
   
   // When wallet is connected/disconnected, update the profile mode
   useEffect(() => {
@@ -148,9 +151,11 @@ function IntegratedProfileContent() {
       if (isAuthenticated && userAddress) {
         console.log('Wallet connected, setting edit mode and updating profile');
         
-        // Update profile with wallet address
-        updateProfileField('walletAddress', userAddress);
-        updateProfileField('showWalletAddress', true);
+        // Only update wallet address if it's changed or not set
+        if (profile.walletAddress !== userAddress) {
+          updateProfileField('walletAddress', userAddress);
+          updateProfileField('showWalletAddress', true);
+        }
         
         // Always ensure edit mode when authenticated
         if (currentMode !== ProfileMode.Edit) {
@@ -167,6 +172,7 @@ function IntegratedProfileContent() {
         }
       }
     }
+  // Remove profile.walletAddress from dependencies and only depend on userAddress
   }, [isAuthenticated, userAddress, isInitialized, updateProfileField]);
 
   // Handle wallet connection

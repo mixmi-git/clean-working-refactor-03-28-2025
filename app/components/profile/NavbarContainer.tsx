@@ -42,7 +42,7 @@ export function NavbarContainer() {
       if (isInitialized) {
         refreshAuthState()
       }
-    }, 2000) // Check every 2 seconds
+    }, 5000) // Reduced frequency from 2 seconds to 5 seconds
     
     return () => clearInterval(interval)
   }, [refreshAuthState, isInitialized])
