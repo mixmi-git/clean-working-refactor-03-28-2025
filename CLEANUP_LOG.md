@@ -173,6 +173,43 @@ This document tracks all cleanup tasks performed on the codebase, including what
   - Consider integrating this functionality into the main UI in the future
   - Code is in `app/reset/page.tsx`
 
+### Task 14: Fix Wallet Authentication Issues
+- **Branch:** `fix/auth-conflicts`
+- **Files Modified:**
+  - `app/lib/auth.ts` (updated wallet authentication with modern API)
+  - Added `app/hooks/useAuth.ts` for better component integration
+- **Notes:**
+  - Updated authentication to use modern Stacks Connect API (v8) instead of legacy approach
+  - Added support for multiple wallet response format extraction
+  - Added debug console tools for authentication validation
+- **Verification:**
+  - Confirmed wallet connects and authenticates successfully
+  - Verified profile switches to edit mode when authenticated
+  - Tested that edit functionality works after authentication
+- **Learning:**
+  - The Stacks Connect API has evolved, with newer methods (`connect()` and `request()`) replacing older ones (`showConnect()`)
+  - Wallet response formats vary between implementations, requiring robust extraction logic
+
+### Task 15: Fix Infinite Render Loops and Console Spam
+- **Branch:** `fix/auth-section-editing`
+- **Files Modified:**
+  - `app/components/IntegratedProfile.tsx` (fixed effect dependency cycles)
+  - `app/components/profile/NavbarContainer.tsx` (disabled polling)
+  - `app/components/UserProfile.tsx` (removed polling)
+  - `app/lib/auth.ts` (reduced logging frequency)
+- **Notes:**
+  - Fixed circular dependency cycles in useEffect hooks that caused infinite rendering
+  - Eliminated excessive polling and dramatically reduced console logs
+  - Added throttling and one-time execution flags
+- **Verification:**
+  - Confirmed console is no longer spammed with logs
+  - Verified that authentication still works correctly 
+  - Tested that profile editing functions normally
+- **Learning:**
+  - Multiple components polling for auth state can cause cascading rerenders
+  - Effect dependencies need careful management to avoid cycles
+  - Development logging should be throttled to prevent console overflow
+
 ## General Approach Followed
 
 1. Create a specific branch for each cleanup task
@@ -192,3 +229,6 @@ This document tracks all cleanup tasks performed on the codebase, including what
 6. **Type System Complexity:** The project uses a mix of direct type imports and re-exports, making it challenging to refactor without a dedicated effort
 7. **Hidden Dependencies:** Some files may have dependencies that aren't apparent through static code analysis or grep searches
 8. **Dynamic Imports:** The application may use dynamic imports or lazy loading that makes dependency tracking difficult 
+9. **State Management Cycles:** Complex state management with multiple components updating shared state can lead to infinite rerenders
+10. **Authentication Complexity:** Wallet authentication involves multiple steps and components that need to work together properly
+11. **API Evolution:** External API changes (like Stacks wallet) require careful updates to maintain compatibility 
