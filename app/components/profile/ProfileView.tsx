@@ -26,6 +26,7 @@ import { SpotlightEditorModal } from './editor/modals/SpotlightEditorModal';
 import { MediaEditorModal } from './editor/modals/MediaEditorModal';
 import { ShopEditorModal } from './editor/modals/ShopEditorModal';
 import { StickerEditorModal } from './editor/modals/StickerEditorModal';
+import { useProfileMode } from '@/hooks/useProfileMode';
 
 // Media embed component for rendering different types of media
 const MediaEmbed = ({ item }: { item: MediaItem }) => {
@@ -190,8 +191,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     setMounted(true);
   }, []);
 
-  // Effective auth state that considers both isAuthenticated and transition state
-  const effectiveAuth = isAuthenticated && !isTransitioning;
+  // Use the profile mode hook to determine if we're in edit mode
+  const { isEditMode } = useProfileMode(isAuthenticated);
   
   // State to track which spotlight item is being edited
   const [editingSpotlightId, setEditingSpotlightId] = useState<string | null>(null);
@@ -208,6 +209,46 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   // Add state for sticker editor modal
   const [isStickerEditorOpen, setIsStickerEditorOpen] = useState(false);
 
+  // Add state for personal info editor modal
+  const [isPersonalInfoEditorOpen, setIsPersonalInfoEditorOpen] = useState(false);
+  
+  // Add personal info edit handler
+  const handlePersonalInfoSubmit = useCallback((formData: any) => {
+    if (onUpdateProfile) {
+      onUpdateProfile('profileInfo', formData);
+    }
+    setIsPersonalInfoEditorOpen(false);
+  }, [onUpdateProfile]);
+  
+  // Add personal info edit open handler
+  const handlePersonalInfoEditOpen = useCallback(() => {
+    if (onEditProfile && !isEditMode) onEditProfile();
+    setIsPersonalInfoEditorOpen(true);
+  }, [onEditProfile, isEditMode]);
+  
+  // Add dev mode forced-auth for demo purposes
+  const [devForceAuth, setDevForceAuth] = useState(false);
+  
+  // Add dev mode state
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).DEV_FORCE_AUTH = devForceAuth;
+    }
+  }, [isAuthenticated, isEditMode, process.env.NODE_ENV, onEditProfile]);
+  
+  // Add function to toggle dev force auth
+  const toggleDevForceAuth = useCallback(() => {
+    setDevForceAuth(!devForceAuth);
+  }, [isAuthenticated, isEditMode, process.env.NODE_ENV]);
+
+  // Props for personal info display
+  const personalInfoProps = {
+    isAuthenticated: isEditMode,
+    profile,
+    onEditClick: handlePersonalInfoEditOpen,
+    hasEverEdited: profile.hasEditedProfile
+  };
+
   // Add debug logging for profile data
   useEffect(() => {
     console.log('🎯 ProfileView profile data:', {
@@ -220,7 +261,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   const handleEditClick = useCallback(() => {
     if (process.env.NODE_ENV === 'development') {
       console.log('🖋️ Edit profile clicked:', {
-        isAuthenticated: effectiveAuth,
+        isAuthenticated: isEditMode,
         hasCallback: !!onEditProfile
       });
     }
@@ -230,26 +271,26 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     } else {
       console.warn('Edit profile clicked but no callback provided!');
     }
-  }, [onEditProfile, effectiveAuth]);
+  }, [onEditProfile, isEditMode]);
 
   // Debug authentication state
   useEffect(() => {
     console.log('ProfileView full auth state:', {
       isAuthenticated,
-      effectiveAuth,
+      isEditMode,
       isDev: process.env.NODE_ENV === 'development',
       onEditProfile: !!onEditProfile
     });
-  }, [isAuthenticated, effectiveAuth, process.env.NODE_ENV, onEditProfile]);
+  }, [isAuthenticated, isEditMode, process.env.NODE_ENV, onEditProfile]);
 
   // Debug authentication state
   useEffect(() => {
     console.log('ProfileView auth state:', {
       isAuthenticated,
-      effectiveAuth,
+      isEditMode,
       isDev: process.env.NODE_ENV === 'development'
     });
-  }, [isAuthenticated, effectiveAuth, process.env.NODE_ENV]);
+  }, [isAuthenticated, isEditMode, process.env.NODE_ENV]);
 
   // Debug tracking for UI elements
   const getSocialIcon = (platform: string) => {
@@ -307,12 +348,12 @@ const ProfileView: React.FC<ProfileViewProps> = ({
           {/* Profile Section */}
           <PersonalInfoSection
             profile={profile}
-            isAuthenticated={effectiveAuth}
+            isAuthenticated={isEditMode}
             onUpdateProfile={onUpdateProfile}
           />
           
           {/* Section Visibility Controls - Only visible when authenticated */}
-          {mounted && effectiveAuth && onUpdateSectionVisibility ? (
+          {mounted && isEditMode && onUpdateSectionVisibility ? (
             <div className="max-w-sm ml-4 lg:ml-auto lg:mr-auto mb-8">
               <SectionVisibilityManager
                 visibility={profile.sectionVisibility || {}}
@@ -321,7 +362,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                     onUpdateSectionVisibility(field as keyof ProfileData['sectionVisibility'], value);
                   }
                 }}
-                isAuthenticated={effectiveAuth}
+                isAuthenticated={isEditMode}
               />
             </div>
           ) : (
@@ -337,7 +378,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                   <h2 className="text-4xl font-bold text-white tracking-wider">
                     SPOTLIGHT
                   </h2>
-                  {mounted && effectiveAuth && (
+                  {mounted && isEditMode && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -349,12 +390,12 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                     </Button>
                   )}
                 </div>
-                {mounted && effectiveAuth && (
+                {mounted && isEditMode && (
                   <p className="text-sm text-gray-400 mb-12">
                     Share your work and favorite projects
                   </p>
                 )}
-                {(!mounted || !effectiveAuth) && <div className="mb-8"></div>}
+                {(!mounted || !isEditMode) && <div className="mb-8"></div>}
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {spotlightItems.length > 0 ? (
@@ -408,7 +449,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                         </div>
                       </div>
                     ))
-                  ) : mounted && effectiveAuth ? (
+                  ) : mounted && isEditMode ? (
                     // Render placeholder content when authenticated but no items
                     <>
                       {[
@@ -495,7 +536,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                   <h2 className="text-4xl font-bold text-white tracking-wider">
                     MEDIA
                   </h2>
-                  {effectiveAuth && (
+                  {isEditMode && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -507,12 +548,12 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                     </Button>
                   )}
                 </div>
-                {effectiveAuth && (
+                {isEditMode && (
                   <p className="text-sm text-gray-400 mb-12">
                     Share your music, DJ mixes, playlists and videos
                   </p>
                 )}
-                {!effectiveAuth && <div className="mb-8"></div>}
+                {!isEditMode && <div className="mb-8"></div>}
                 
                 {mediaItems && mediaItems.length > 0 ? (
                   mediaItems.length === 1 ? (
@@ -560,7 +601,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                   <h2 className="text-4xl font-bold text-white tracking-wider">
                     SHOP
                   </h2>
-                  {effectiveAuth && (
+                  {isEditMode && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -572,12 +613,12 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                     </Button>
                   )}
                 </div>
-                {effectiveAuth && (
+                {isEditMode && (
                   <p className="text-sm text-gray-400 mb-12">
                     Share anything you want to sell - physical products, digital downloads, or Web3 experiences
                   </p>
                 )}
-                {!effectiveAuth && <div className="mb-8"></div>}
+                {!isEditMode && <div className="mb-8"></div>}
                 
                 {shopItems && shopItems.length > 0 ? (
                   <>
@@ -748,7 +789,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
               sticker={profile.sticker} 
               sectionVisibility={profile.sectionVisibility}
             />
-            {mounted && effectiveAuth && onUpdateStickerData && (
+            {mounted && isEditMode && onUpdateStickerData && (
               <div className="absolute top-0 right-0">
                 <Button
                   variant="outline"

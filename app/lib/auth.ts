@@ -242,9 +242,22 @@ export const useAuth = () => {
       // Check if the user is already signed in
       if (userSession.isUserSignedIn()) {
         console.log("✅ User already signed in");
-        setIsAuthenticated(true);
         const userData = userSession.loadUserData();
-        setUserAddress(userData.profile.stxAddress.mainnet);
+        const address = userData.profile.stxAddress.mainnet;
+        
+        // Update the state
+        setIsAuthenticated(true);
+        setUserAddress(address);
+        setCurrentAccount(address);
+        
+        // Store data in localStorage for persistence
+        localStorage.setItem('mixmi-wallet-connected', 'true');
+        localStorage.setItem('mixmi-wallet-address', address);
+        localStorage.setItem('mixmi-wallet-provider', 'connect');
+        localStorage.setItem('mixmi-wallet-accounts', JSON.stringify([address]));
+        localStorage.setItem('mixmi-last-auth-check', new Date().toISOString());
+        localStorage.setItem('profile_mode', 'edit');
+        
         connectionInProgress = false;
         return;
       }
@@ -272,7 +285,7 @@ export const useAuth = () => {
                 
                 console.log('✅ User signed in! Address:', address);
                 
-                // Store critical data in localStorage for persistence across page reloads
+                // Store critical data in localStorage for persistence
                 localStorage.setItem('mixmi-wallet-connected', 'true');
                 localStorage.setItem('mixmi-wallet-provider', 'connect');
                 localStorage.setItem('mixmi-wallet-accounts', JSON.stringify([address]));
@@ -280,22 +293,12 @@ export const useAuth = () => {
                 localStorage.setItem('mixmi-last-auth-check', new Date().toISOString());
                 localStorage.setItem('profile_mode', 'edit');
                 
-                // Update state before page reload
+                // Update React state directly - no need for page reload
                 setIsAuthenticated(true);
                 setUserAddress(address);
                 setCurrentAccount(address);
                 
-                // Don't reload immediately - give the state time to update
-                setTimeout(() => {
-                  // Check if a reload is really needed
-                  console.log('Checking if page reload is needed');
-                  if (!isAuthenticated || userAddress !== address) {
-                    console.log('State not updated, forcing page reload');
-                    window.location.reload();
-                  } else {
-                    console.log('State already updated, no reload needed');
-                  }
-                }, 500);
+                console.log('✅ Authentication state updated, wallet connected!');
               } else if (userSession.isSignInPending()) {
                 console.log("🔄 Handling pending sign in...");
                 try {
@@ -309,17 +312,10 @@ export const useAuth = () => {
                   localStorage.setItem('mixmi-wallet-address', address);
                   localStorage.setItem('profile_mode', 'edit');
                   
-                  // Update state before reload
+                  // Update state
                   setIsAuthenticated(true);
                   setUserAddress(address);
                   setCurrentAccount(address);
-                  
-                  // Only reload if state doesn't update
-                  setTimeout(() => {
-                    if (!isAuthenticated || userAddress !== address) {
-                      window.location.reload();
-                    }
-                  }, 500);
                 } catch (e) {
                   console.error('Error handling pending sign in:', e);
                 }
@@ -328,11 +324,6 @@ export const useAuth = () => {
               }
             } catch (error) {
               console.error("Error in onFinish callback:", error);
-              
-              // Even if there's an error, try to reload if there's data in localStorage
-              if (localStorage.getItem('mixmi-wallet-connected') === 'true') {
-                window.location.reload();
-              }
             }
             
             connectionInProgress = false;

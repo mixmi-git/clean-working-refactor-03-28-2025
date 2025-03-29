@@ -96,25 +96,32 @@ function IntegratedProfileContent() {
     });
   }, [isAuthenticated, userAddress, isInitialized, profile.walletAddress]);
   
-  // When wallet is connected/disconnected, update the profile
+  // When wallet is connected/disconnected, update the profile mode
   useEffect(() => {
     if (isInitialized) {
+      // Get current profile mode from localStorage
+      const currentMode = localStorage.getItem('profile_mode');
+      
       if (isAuthenticated && userAddress) {
-        console.log('Wallet connected, updating profile with address:', userAddress);
+        console.log('Wallet connected, setting edit mode and updating profile');
         
         // Update profile with wallet address
         updateProfileField('walletAddress', userAddress);
         updateProfileField('showWalletAddress', true);
-        updateProfileField('hasEditedProfile', true);
         
-        // Enable edit mode since wallet is connected
-        localStorage.setItem('profile_mode', ProfileMode.Edit);
+        // Always ensure edit mode when authenticated
+        if (currentMode !== ProfileMode.Edit) {
+          console.log('Setting profile mode to edit');
+          localStorage.setItem('profile_mode', ProfileMode.Edit);
+        }
       } else if (!isAuthenticated) {
         console.log('Wallet disconnected, ensuring profile is in view mode');
         
-        // Don't clear wallet address from profile to allow read-only viewing
-        // of previously edited content, just set mode to view
-        localStorage.setItem('profile_mode', ProfileMode.View);
+        // Always ensure view mode when not authenticated
+        if (currentMode !== ProfileMode.View) {
+          console.log('Setting profile mode to view');
+          localStorage.setItem('profile_mode', ProfileMode.View);
+        }
       }
     }
   }, [isAuthenticated, userAddress, isInitialized, updateProfileField]);
@@ -126,30 +133,12 @@ function IntegratedProfileContent() {
       setStatusMessage(isAuthenticated ? "Disconnecting wallet..." : "Connecting wallet...");
       
       if (isAuthenticated) {
-        // Disconnect through hook
+        // Disconnect wallet
         await disconnectWallet();
-        
-        // Set view mode as a fallback
-        localStorage.setItem('profile_mode', ProfileMode.View);
-        
-        // Update profile data
-        updateProfileField('walletAddress', '');
-        updateProfileField('showWalletAddress', false);
-        
         setStatusMessage("Wallet disconnected");
       } else {
-        // Connect wallet through hook
+        // Connect wallet
         await connectWallet();
-        
-        // Add a fallback in case the app doesn't reload - check localStorage
-        const walletAddress = localStorage.getItem('mixmi-wallet-address');
-        if (walletAddress) {
-          // Update profile data
-          updateProfileField('walletAddress', walletAddress);
-          updateProfileField('showWalletAddress', true);
-          localStorage.setItem('profile_mode', ProfileMode.Edit);
-        }
-        
         setStatusMessage("Wallet connected successfully!");
       }
       
