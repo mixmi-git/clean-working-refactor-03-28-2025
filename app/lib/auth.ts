@@ -213,22 +213,21 @@ export const useAuth = () => {
                 setAvailableAccounts([address]);
                 setCurrentAccount(address);
                 
-                // Store for persistence
-                try {
-                  localStorage.setItem('mixmi-wallet-connected', 'true');
-                  localStorage.setItem('mixmi-wallet-provider', 'connect');
-                  localStorage.setItem('mixmi-wallet-accounts', JSON.stringify([address]));
-                  localStorage.setItem('mixmi-wallet-address', address);
-                  localStorage.setItem('mixmi-last-auth-check', new Date().toISOString());
-                  
-                  // Explicitly set profile mode to Edit when authenticated
-                  localStorage.setItem('profile_mode', 'edit');
-                } catch (e) {
-                  console.error('Error saving connection data:', e);
-                }
+                // Store for persistence - this is critical for the UI to update
+                localStorage.setItem('mixmi-wallet-connected', 'true');
+                localStorage.setItem('mixmi-wallet-provider', 'connect');
+                localStorage.setItem('mixmi-wallet-accounts', JSON.stringify([address]));
+                localStorage.setItem('mixmi-wallet-address', address);
+                localStorage.setItem('mixmi-last-auth-check', new Date().toISOString());
+                localStorage.setItem('profile_mode', 'edit');
                 
                 // Force refresh to ensure the UI updates
-                setRefreshCounter(prev => prev + 1);
+                setTimeout(() => {
+                  setIsAuthenticated(true);
+                  setUserAddress(address);
+                  setRefreshCounter(prev => prev + 1);
+                }, 500);
+                
               } else if (userSession.isSignInPending()) {
                 console.log("🔄 Handling pending sign in...");
                 try {
@@ -245,6 +244,9 @@ export const useAuth = () => {
                   localStorage.setItem('mixmi-wallet-connected', 'true');
                   localStorage.setItem('mixmi-wallet-address', address);
                   localStorage.setItem('profile_mode', 'edit');
+                  
+                  // Explicitly force a refresh
+                  setRefreshCounter(prev => prev + 1);
                 } catch (e) {
                   console.error('Error handling pending sign in:', e);
                 }

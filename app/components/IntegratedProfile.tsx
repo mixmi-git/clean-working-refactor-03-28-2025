@@ -122,9 +122,58 @@ function IntegratedProfileContent() {
       if (isAuthenticated) {
         await disconnectWallet();
         setStatusMessage("Wallet disconnected");
+        
+        // Ensure UI updates by manually clearing localStorage values
+        localStorage.removeItem('mixmi-wallet-connected');
+        localStorage.removeItem('mixmi-wallet-address');
+        localStorage.removeItem('mixmi-wallet-accounts');
+        localStorage.setItem('profile_mode', ProfileMode.View);
+        
+        // Force a page reload to ensure clean state
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
       } else {
+        // Connect wallet first
         await connectWallet();
         setStatusMessage("Wallet connected successfully!");
+        
+        // Since we need to ensure the auth state is updated,
+        // we'll directly check for wallet connection success
+        if (typeof window !== 'undefined') {
+          const connected = localStorage.getItem('mixmi-wallet-connected') === 'true';
+          const address = localStorage.getItem('mixmi-wallet-address');
+          
+          console.log('Wallet connection check:', { connected, address });
+          
+          if (connected && address) {
+            // Manually update profile
+            updateProfileField('walletAddress', address);
+            updateProfileField('showWalletAddress', true);
+            updateProfileField('hasEditedProfile', true);
+            
+            // Force localStorage update
+            try {
+              const profileData = {
+                ...profile,
+                walletAddress: address,
+                showWalletAddress: true,
+                hasEditedProfile: true
+              };
+              localStorage.setItem('mixmi_profile_data', JSON.stringify(profileData));
+              localStorage.setItem('profile_mode', ProfileMode.Edit);
+            } catch (e) {
+              console.error('Error updating profile in localStorage:', e);
+            }
+            
+            // Force a page reload to ensure clean state
+            setTimeout(() => {
+              window.location.reload();
+            }, 1000);
+            
+            return;
+          }
+        }
       }
       
       // Clear status message after a delay
