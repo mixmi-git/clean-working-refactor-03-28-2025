@@ -66,7 +66,7 @@ function IntegratedProfileContent() {
     refreshAuthState
   } = useAuth();
 
-  // Check for wallet connection on initial render
+  // Check for wallet connection on initial render - RUN ONCE ONLY
   useEffect(() => {
     // Force an auth state refresh on component mount
     refreshAuthState();
@@ -127,53 +127,60 @@ function IntegratedProfileContent() {
         return 'Auth state changed. Reload page to see changes.';
       };
     }
-  // Remove profile from dependencies to avoid infinite loops
-  // Only run this effect once on mount and when auth state changes
-  }, [isAuthenticated, refreshAuthState, updateProfileField]);
+  // Use empty dependency array to run only once on mount
+  }, []);
 
-  // Log authentication state changes to help with debugging
-  useEffect(() => {
-    // Only log changes that specifically involve authentication state
-    console.log("IntegratedProfile auth state changed:", {
-      isAuthenticated,
-      userAddress,
-      isInitialized
-    });
-    // Don't include profile.walletAddress in dependencies to avoid cycles
-  }, [isAuthenticated, userAddress, isInitialized]);
+  // Log authentication state changes to help with debugging - DISABLED
+  // useEffect(() => {
+  //   // Only log changes that specifically involve authentication state
+  //   console.log("IntegratedProfile auth state changed:", {
+  //     isAuthenticated,
+  //     userAddress,
+  //     isInitialized
+  //   });
+  //   // Don't include profile.walletAddress in dependencies to avoid cycles
+  // }, [isAuthenticated, userAddress, isInitialized]);
   
   // When wallet is connected/disconnected, update the profile mode
   useEffect(() => {
-    if (isInitialized) {
-      // Get current profile mode from localStorage
-      const currentMode = localStorage.getItem('profile_mode');
+    // Skip if not initialized yet
+    if (!isInitialized) return;
+    
+    // Use a flag to track if we've already run for this component instance
+    const hasRun = (window as any).__profileModeEffectHasRun;
+    if (hasRun) return;
+    
+    // Mark that we've run this effect
+    (window as any).__profileModeEffectHasRun = true;
+    
+    // Get current profile mode from localStorage
+    const currentMode = localStorage.getItem('profile_mode');
+    
+    if (isAuthenticated && userAddress) {
+      console.log('Wallet connected, setting edit mode and updating profile');
       
-      if (isAuthenticated && userAddress) {
-        console.log('Wallet connected, setting edit mode and updating profile');
-        
-        // Only update wallet address if it's changed or not set
-        if (profile.walletAddress !== userAddress) {
-          updateProfileField('walletAddress', userAddress);
-          updateProfileField('showWalletAddress', true);
-        }
-        
-        // Always ensure edit mode when authenticated
-        if (currentMode !== ProfileMode.Edit) {
-          console.log('Setting profile mode to edit');
-          localStorage.setItem('profile_mode', ProfileMode.Edit);
-        }
-      } else if (!isAuthenticated) {
-        console.log('Wallet disconnected, ensuring profile is in view mode');
-        
-        // Always ensure view mode when not authenticated
-        if (currentMode !== ProfileMode.View) {
-          console.log('Setting profile mode to view');
-          localStorage.setItem('profile_mode', ProfileMode.View);
-        }
+      // Only update wallet address if it's changed or not set
+      if (profile.walletAddress !== userAddress) {
+        updateProfileField('walletAddress', userAddress);
+        updateProfileField('showWalletAddress', true);
+      }
+      
+      // Always ensure edit mode when authenticated
+      if (currentMode !== ProfileMode.Edit) {
+        console.log('Setting profile mode to edit');
+        localStorage.setItem('profile_mode', ProfileMode.Edit);
+      }
+    } else if (!isAuthenticated) {
+      console.log('Wallet disconnected, ensuring profile is in view mode');
+      
+      // Always ensure view mode when not authenticated
+      if (currentMode !== ProfileMode.View) {
+        console.log('Setting profile mode to view');
+        localStorage.setItem('profile_mode', ProfileMode.View);
       }
     }
-  // Remove profile.walletAddress from dependencies and only depend on userAddress
-  }, [isAuthenticated, userAddress, isInitialized, updateProfileField]);
+  // Run only when authentication state changes
+  }, [isAuthenticated, userAddress, isInitialized, updateProfileField, profile.walletAddress]);
 
   // Handle wallet connection
   const handleToggleWallet = async () => {

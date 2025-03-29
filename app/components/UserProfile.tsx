@@ -18,16 +18,16 @@ export function UserProfile() {
     });
   }, [isAuthenticated]);
   
-  // Periodically refresh auth state
-  useEffect(() => {
-    // Only poll occasionally to avoid excessive updates
-    const intervalId = setInterval(() => {
-      console.log('UserProfile: Occasional auth refresh');
-      refreshAuthState();
-    }, 30000); // Reduced from 5000ms to 30000ms (30 seconds)
+  // Periodically refresh auth state - TEMPORARILY DISABLED 
+  // useEffect(() => {
+  //   // Only poll occasionally to avoid excessive updates
+  //   const intervalId = setInterval(() => {
+  //     console.log('UserProfile: Occasional auth refresh');
+  //     refreshAuthState();
+  //   }, 30000); // Reduced from 5000ms to 30000ms (30 seconds)
     
-    return () => clearInterval(intervalId);
-  }, [refreshAuthState]);
+  //   return () => clearInterval(intervalId);
+  // }, [refreshAuthState]);
   
   return (
     <div className="flex flex-col min-h-screen">

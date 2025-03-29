@@ -36,19 +36,19 @@ export function NavbarContainer() {
     return () => clearTimeout(timeout)
   }, [isLoading])
   
-  // Poll for auth state changes - significantly reduced frequency
-  useEffect(() => {
-    // Only refresh auth state occasionally to avoid excessive updates
-    // This is a fallback check - most auth updates should come from user actions
-    const interval = setInterval(() => {
-      if (isInitialized) {
-        console.log('NavbarContainer: Occasional auth refresh');
-        refreshAuthState();
-      }
-    }, 30000); // Reduced from 5s to 30s to minimize state churn
+  // Poll for auth state changes - TEMPORARILY DISABLED
+  // useEffect(() => {
+  //   // Only refresh auth state occasionally to avoid excessive updates
+  //   // This is a fallback check - most auth updates should come from user actions
+  //   const interval = setInterval(() => {
+  //     if (isInitialized) {
+  //       console.log('NavbarContainer: Occasional auth refresh');
+  //       refreshAuthState();
+  //     }
+  //   }, 30000); // Reduced from 5s to 30s to minimize state churn
     
-    return () => clearInterval(interval);
-  }, [refreshAuthState, isInitialized])
+  //   return () => clearInterval(interval);
+  // }, [refreshAuthState, isInitialized])
   
   // Direct connect function that bypasses hooks for testing (not used in main flow)
   const handleDirectConnect = useCallback(() => {
